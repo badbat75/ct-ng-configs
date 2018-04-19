@@ -28,3 +28,8 @@ Use the crosstool platform:
 export CC="/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-gcc"
 export CPP="/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-g++"
 ```
+Use the crosstool to build kernels:
+```
+make ARCH=arm CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- menuconfig
+make ARCH=arm CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- -k
+```
