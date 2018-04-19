@@ -33,7 +33,7 @@ Use the crosstool to build kernels:
 make \
   ARCH=arm \
   CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- \
-  KBUILD_DEFCONFIG=arch/arm/configs/vexpress_defconfig \
+  KBUILD_DEFCONFIG=vexpress_defconfig \
   defconfig
 make \
   ARCH=arm \
