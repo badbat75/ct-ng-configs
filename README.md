@@ -30,6 +30,16 @@ export CPP=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-g++
 ```
 Use the crosstool to build kernels:
 ```
-make ARCH=arm CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- menuconfig
-make ARCH=arm CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- -k
+make \
+  ARCH=arm \
+  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- \
+  KBUILD_DEFCONFIG=var_som_mx6_android_defconfig \
+  defconfig
+make \
+  ARCH=arm \
+  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- \
+  menuconfig
+make -j2 -k\
+  ARCH=arm \
+  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-
 ```
