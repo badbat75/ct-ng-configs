@@ -23,3 +23,8 @@ DEFCONFIG=./rpi.config ct-ng defconfig
 ct-ng menuconfig
 ct-ng build
 ```
+Use the crosstool platform:
+```
+export CC="/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-gcc"
+export CPP="/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-g++"
+```
