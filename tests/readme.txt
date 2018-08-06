@@ -13,3 +13,11 @@ RaspberryPi2:
 
 RaspberryPi3:
 	CFLAGS="-mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53"
+
+To build run:
+
+	make
+
+To test in host environment with qemu:
+
+	qemu-arm -L /opt/x-tools/arm-rpi-linux-gnueabihf/arm-rpi-linux-gnueabihf/sysroot helloworld
