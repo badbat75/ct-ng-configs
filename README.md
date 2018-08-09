@@ -24,10 +24,10 @@ Use the crosstool platform:
 Edit bootstrap.conf as needed and run:
 
 ```
-bootstrap
+./bootstrap
 ```
 
-Everything will be set in your environment.
+A new shell will be started with the entire environment set.
 
 Use the crosstool to build kernels:
 ```
