@@ -14,32 +14,33 @@ Start building the crosstool:
 ```
 git clone https://github.com/badbat75/ct-ng-configs
 cd ct-ng-configs
-sudo cp ct-ng.files/ct-ng.sh /etc/profile.d/
 
-source /etc/profile.d/ct-ng.sh
-source /etc/bash_completion.d/ct-ng.comp
-
-DEFCONFIG=./rpi.config ct-ng defconfig
+DEFCONFIG=./rpi.config ct-ng <config_file>
 ct-ng menuconfig
 ct-ng build
 ```
 Use the crosstool platform:
+
+Edit bootstrap.conf as needed and run:
+
 ```
-export CC=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-gcc
-export CPP=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-g++
+bootstrap
 ```
+
+Everything will be set in your environment.
+
 Use the crosstool to build kernels:
 ```
 make -j2\
   ARCH=arm \
-  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- \
+  CROSS_COMPILE=${C_PREFIX} \
   KBUILD_DEFCONFIG=vexpress_defconfig \
   defconfig
 make -j2\
   ARCH=arm \
-  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf- \
+  CROSS_COMPILE=${C_PREFIX} \
   menuconfig
 make -j2 -k\
   ARCH=arm \
-  CROSS_COMPILE=/opt/x-tools/arm-rpi-linux-gnueabihf/bin/arm-rpi-linux-gnueabihf-
+  CROSS_COMPILE=${C_PREFIX}
 ```
