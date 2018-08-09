@@ -1,5 +1,5 @@
 ﻿# ct-ng-configs
-##Installation:
+## Installation:
 ```
 wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.23.0.tar.xz
 tar xf crosstool-ng-1.23.0.tar.xz
