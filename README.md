@@ -15,7 +15,7 @@ Start building the crosstool:
 git clone https://github.com/badbat75/ct-ng-configs
 cd ct-ng-configs
 
-DEFCONFIG=./rpi.config ct-ng <config_file>
+DEFCONFIG=./rpi.config ct-ng defconfig
 ct-ng menuconfig
 ct-ng build
 ```
