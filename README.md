@@ -1,5 +1,5 @@
 ﻿# ct-ng-configs
-Installation:
+## Installation:
 ```
 wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.23.0.tar.xz
 tar xf crosstool-ng-1.23.0.tar.xz
@@ -10,7 +10,7 @@ sudo make install
 sudo cp ct-ng.comp /etc/bash_completion.d/
 cd ..
 ```
-Start building the crosstool:
+## Start building the crosstool:
 ```
 git clone https://github.com/badbat75/ct-ng-configs
 cd ct-ng-configs
@@ -19,17 +19,13 @@ DEFCONFIG=./rpi.config ct-ng defconfig
 ct-ng menuconfig
 ct-ng build
 ```
-Use the crosstool platform:
-
+## Use the crosstool platform:
 Edit bootstrap.conf as needed and run:
-
 ```
-bootstrap
+./bootstrap
 ```
-
-Everything will be set in your environment.
-
-Use the crosstool to build kernels:
+A new shell will be started with the entire environment set.
+## Use the crosstool to build kernels:
 ```
 make -j2\
   ARCH=arm \
