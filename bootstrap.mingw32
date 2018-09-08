@@ -9,6 +9,7 @@ export PATH=${PATH}:${CT_HOME}/${C_PREFIX::-1}/bin
 export CC=${C_PREFIX}gcc
 export CPP=${C_PREFIX}cpp
 export CXX=${C_PREFIX}g++
+export LD=${C_PREFIX}ld
 
 [ "x$1" == "x" ] && SYSROOT="$(realpath $($CC --print-sysroot))" || SYSROOT="$1"
 export SYSROOT
@@ -46,6 +47,7 @@ echo
 echo "CXX: 			${CXX}"
 echo "CXXFLAGS: 		${CXXFLAGS}"
 echo
+echo "LD: 			${LD}"
 echo "LDFLAGS: 		${LDFLAGS}"
 echo
 echo "PKG_CONFIG_LIBDIR: 	${PKG_CONFIG_LIBDIR}"
