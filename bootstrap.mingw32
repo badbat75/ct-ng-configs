@@ -4,56 +4,70 @@ test -f "$0.conf" && . $0.conf
 test -z ${C_PREFIX:-} && echo "C_PREFIX not set. Look at $0.conf and include it or set an environment variable" && exit 1
 test -z ${CT_HOME:-} && CT_HOME=/opt/x-tools
 
-export PATH=${PATH}:${CT_HOME}/${C_PREFIX::-1}/bin
+CT_PATH=${CT_HOME}/${C_PREFIX::-1}/bin
+SYSROOT="$(realpath $(${CT_PATH}/${C_PREFIX}gcc --print-sysroot))"
 
-export CC=${C_PREFIX}gcc
-export CPP=${C_PREFIX}cpp
-export CXX=${C_PREFIX}g++
+while (( "$#" )); do
+	case ${1} in
+	-dummy)
+		CONFIG=ONLY_PATH
+		;;
+	*)
+		SYSROOT="${1}"
+		;;
+	esac
+	shift
+done
 
-[ "x$1" == "x" ] && SYSROOT="$(realpath $($CC --print-sysroot))" || SYSROOT="$1"
 export SYSROOT
+export PATH=${CT_PATH}:${PATH}
 
-export CFLAGS="${CFLAGS} --sysroot ${SYSROOT}"
-export CFLAGS="${CFLAGS} -I${SYSROOT}/usr/include"
-export CFLAGS="${CFLAGS} -I${SYSROOT}/mingw/include"
-export CXXFLAGS="${CFLAGS}"
-export LDFLAGS="-L${SYSROOT}/usr/lib"
-export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib"
-export LDFLAGS="${LDFLAGS} -L${SYSROOT}/mingw/lib"
-#export LDFLAGS="${LDFLAGS} -L${SYSROOT}/usr/lib/arm-linux-gnueabihf"
-#export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib/arm-linux-gnueabihf"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/mingw/lib"
-#export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib/arm-linux-gnueabihf"
-#export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib/arm-linux-gnueabihf"
-
-export PKG_CONFIG_DIR=
-export PKG_CONFIG_SYSROOT_DIR=${SYSROOT}
-export PKG_CONFIG_LIBDIR=${SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig:${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig
-
-#export LD_LIBRARY_PATH="${SYSROOT}/usr/lib/arm-linux-gnueabihf:${SYSROOT}/lib/arm-linux-gnueabihf"
-export LD_LIBRARY_PATH="${SYSROOT}/usr/lib:${SYSROOT}/lib"
-
-export CT_XLDD_ROOT=${SYSROOT}
-
+echo
+echo "CT_PATH:		${CT_PATH}"
 echo
 echo "SYSROOT:		${SYSROOT}"
-echo
-echo "CC: 			${CC}"
-echo "CFLAGS: 		${CFLAGS}"
-echo
-echo "CXX: 			${CXX}"
-echo "CXXFLAGS: 		${CXXFLAGS}"
-echo
-echo "LDFLAGS: 		${LDFLAGS}"
-echo
-echo "PKG_CONFIG_LIBDIR: 	${PKG_CONFIG_LIBDIR}"
-echo "PKG_CONFIG_SYSROOT_DIR: ${PKG_CONFIG_SYSROOT_DIR}"
-echo
-echo "LD_LIBRARY_PATH:	${LD_LIBRARY_PATH}"
-echo
-echo "CT_XLDD_ROOT: 		${CT_XLDD_ROOT}"
+
+if [ "x$CONFIG" != "xONLY_PATH" ]
+then
+	export CC=${C_PREFIX}gcc
+	export CPP=${C_PREFIX}cpp
+	export CXX=${C_PREFIX}g++
+	export CFLAGS="${CFLAGS} --sysroot ${SYSROOT}"
+	export CFLAGS="${CFLAGS} -I${SYSROOT}/usr/include"
+	export CFLAGS="${CFLAGS} -I${SYSROOT}/mingw/include"
+	export CXXFLAGS="${CFLAGS}"
+	export LDFLAGS="-L${SYSROOT}/usr/lib"
+	export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib"
+	export LDFLAGS="${LDFLAGS} -L${SYSROOT}/mingw/lib"
+	export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib"
+	export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib"
+	export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/mingw/lib"
+
+	export PKG_CONFIG_DIR=
+	export PKG_CONFIG_SYSROOT_DIR=${SYSROOT}
+	export PKG_CONFIG_LIBDIR=${SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig:${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig
+
+	#export LD_LIBRARY_PATH="${SYSROOT}/usr/lib/arm-linux-gnueabihf:${SYSROOT}/lib/arm-linux-gnueabihf"
+	export LD_LIBRARY_PATH="${SYSROOT}/usr/lib:${SYSROOT}/lib"
+
+	export CT_XLDD_ROOT=${SYSROOT}
+
+	echo
+	echo "CC: 			${CC}"
+	echo "CFLAGS: 		${CFLAGS}"
+	echo
+	echo "CXX: 			${CXX}"
+	echo "CXXFLAGS: 		${CXXFLAGS}"
+	echo
+	echo "LDFLAGS: 		${LDFLAGS}"
+	echo
+	echo "PKG_CONFIG_LIBDIR: 	${PKG_CONFIG_LIBDIR}"
+	echo "PKG_CONFIG_SYSROOT_DIR: ${PKG_CONFIG_SYSROOT_DIR}"
+	echo
+	echo "LD_LIBRARY_PATH:	${LD_LIBRARY_PATH}"
+	echo
+	echo "CT_XLDD_ROOT: 		${CT_XLDD_ROOT}"
+fi
 echo
 echo "Starting nested bash shell. Run exit or CTRL+D to return to the main shell"
 echo
