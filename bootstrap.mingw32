@@ -7,7 +7,6 @@ test -z ${CT_HOME:-} && CT_HOME=/opt/x-tools
 CT_PATH=${CT_HOME}/${C_PREFIX::-1}/bin
 SYSROOT="$(realpath $(${CT_PATH}/${C_PREFIX}gcc --print-sysroot))"
 
-<<<<<<< HEAD
 while (( "$#" )); do
 	case ${1} in
 	-dummy)
@@ -19,61 +18,14 @@ while (( "$#" )); do
 	esac
 	shift
 done
-=======
-export CC=${C_PREFIX}gcc
-export CPP=${C_PREFIX}cpp
-export CXX=${C_PREFIX}g++
-export LD=${C_PREFIX}ld
->>>>>>> 6cc54c9e4f0990e61d6302ef34c33d3af10a3d00
 
 export SYSROOT
 export PATH=${CT_PATH}:${PATH}
 
-<<<<<<< HEAD
-=======
-export CFLAGS="${CFLAGS} --sysroot ${SYSROOT}"
-export CFLAGS="${CFLAGS} -I${SYSROOT}/usr/include"
-export CFLAGS="${CFLAGS} -I${SYSROOT}/mingw/include"
-export CXXFLAGS="${CFLAGS}"
-export LDFLAGS="-L${SYSROOT}/usr/lib"
-export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib"
-export LDFLAGS="${LDFLAGS} -L${SYSROOT}/mingw/lib"
-#export LDFLAGS="${LDFLAGS} -L${SYSROOT}/usr/lib/arm-linux-gnueabihf"
-#export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib/arm-linux-gnueabihf"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/mingw/lib"
-#export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib/arm-linux-gnueabihf"
-#export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib/arm-linux-gnueabihf"
-
-export PKG_CONFIG_DIR=
-export PKG_CONFIG_SYSROOT_DIR=${SYSROOT}
-export PKG_CONFIG_LIBDIR=${SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig:${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig
-
-#export LD_LIBRARY_PATH="${SYSROOT}/usr/lib/arm-linux-gnueabihf:${SYSROOT}/lib/arm-linux-gnueabihf"
-export LD_LIBRARY_PATH="${SYSROOT}/usr/lib:${SYSROOT}/lib"
-
-export CT_XLDD_ROOT=${SYSROOT}
-
 echo
 echo "SYSROOT:		${SYSROOT}"
-echo
-echo "CC: 			${CC}"
-echo "CFLAGS: 		${CFLAGS}"
-echo
-echo "CXX: 			${CXX}"
-echo "CXXFLAGS: 		${CXXFLAGS}"
-echo
-echo "LD: 			${LD}"
-echo "LDFLAGS: 		${LDFLAGS}"
-echo
-echo "PKG_CONFIG_LIBDIR: 	${PKG_CONFIG_LIBDIR}"
-echo "PKG_CONFIG_SYSROOT_DIR: ${PKG_CONFIG_SYSROOT_DIR}"
->>>>>>> 6cc54c9e4f0990e61d6302ef34c33d3af10a3d00
 echo
 echo "CT_PATH:		${CT_PATH}"
-echo
-echo "SYSROOT:		${SYSROOT}"
 
 if [ "x$CONFIG" != "xONLY_PATH" ]
 then
@@ -95,7 +47,6 @@ then
 	export PKG_CONFIG_SYSROOT_DIR=${SYSROOT}
 	export PKG_CONFIG_LIBDIR=${SYSROOT}/usr/lib/arm-linux-gnueabihf/pkgconfig:${SYSROOT}/usr/lib/pkgconfig:${SYSROOT}/usr/share/pkgconfig
 
-	#export LD_LIBRARY_PATH="${SYSROOT}/usr/lib/arm-linux-gnueabihf:${SYSROOT}/lib/arm-linux-gnueabihf"
 	export LD_LIBRARY_PATH="${SYSROOT}/usr/lib:${SYSROOT}/lib"
 
 	export CT_XLDD_ROOT=${SYSROOT}
