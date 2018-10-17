@@ -1,0 +1,8 @@
+This patch will solve issues in libcc1 build during a crosscompile environment.
+The problem is that gcc_cv_objdump is not passed from gcc configure to libcc1 configure
+
+Apply patch:
+cd $GCC
+patch -p0 < gcc-8-crosscompile.patch
+cd libcc1
+autoreconf -fi
