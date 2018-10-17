@@ -23,7 +23,7 @@ export LDFLAGS="${LDFLAGS} -L${SYSROOT}/lib/arm-linux-gnueabihf"
 export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib"
 export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib"
 export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/usr/lib/arm-linux-gnueabihf"
-export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib/arm-linux-gnueabihf"
+#export LDFLAGS="${LDFLAGS} -Wl,-rpath-link ${SYSROOT}/lib/arm-linux-gnueabihf"
 
 export PKG_CONFIG_DIR=
 export PKG_CONFIG_SYSROOT_DIR=${SYSROOT}
