@@ -23,7 +23,7 @@ then
 	for i in $(find -L ${SYSROOT}/usr/lib/arm-linux-gnueabihf -lname "/lib/arm-linux-gnueabihf*");
 	do
 	        echo -n "Relinking $i... "
-	        sudo ln -f -s ../../..$(readlink $i) $i
+	        ln -f -s ../../..$(readlink $i) $i
 		echo "done."
 	done
 fi
