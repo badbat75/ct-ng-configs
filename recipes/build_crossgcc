@@ -7,6 +7,7 @@ GCCBUILD=${HOME}/BUILD/${GCCPKG}
 GCCBIN=${HOME}/BINARIES/${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
 SYSROOT=${HOME}/mysysroot
+SCPDEST="pi@127.0.0.1:"
 START_PWD=${PWD}
 
 test ! -d ${GCCBUILD} && mkdir ${GCCBUILD}
@@ -16,11 +17,11 @@ test -f ${GCCTAR} && rm -f ${GCCTAR}
 mkdir ${GCCBIN}
 cd ${GCCBUILD}
 ${GCCSRC}/configure -v \
---build=x86_64-linux-gnu --host=arm-linaro-linux-gnueabihf --target=arm-linaro-linux-gnueabihf \
+--build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
 --program-suffix=-${GCCVER} \
 --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 \
---prefix=/usr --includedir=/usr/include/arm-linux-gnueabihf --libdir=/usr/lib/arm-linux-gnueabihf/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/arm-linux-gnueabihf/${GCCVER} --sysconfdir=/etc \
+--prefix=/usr --libdir=/usr/lib/${ARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${ARCH}/${GCCVER} \
 \
 --with-sysroot=/ \
 \
@@ -36,12 +37,12 @@ ${GCCSRC}/configure -v \
 \
 CC_FOR_BUILD="ccache gcc -pipe" \
 CXX_FOR_BUILD="ccache g++ -pipe" \
-CC="ccache arm-linaro-linux-gnueabihf-gcc -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/arm-linux-gnueabihf" \
-CXX="ccache arm-linaro-linux-gnueabihf-g++ -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/arm-linux-gnueabihf" \
+CC="ccache arm-linux-gnueabihf-gcc -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/${ARCH}" \
+CXX="ccache arm-linux-gnueabihf-g++ -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/${ARCH}" \
 CFLAGS="-g -O3" \
 CXXFLAGS="-g -O3" \
-CC_FOR_TARGET="ccache arm-linaro-linux-gnueabihf-gcc -pipe -L${PWD}/arm-linaro-linux-gnueabihf/libgcc" \
-CXX_FOR_TARGET="ccache arm-linaro-linux-gnueabihf-g++ -pipe -L${PWD}/arm-linaro-linux-gnueabihf/libgcc" \
+CC_FOR_TARGET="ccache arm-linux-gnueabihf-gcc -pipe -L${PWD}/${ARCH}/libgcc" \
+CXX_FOR_TARGET="ccache arm-linux-gnueabihf-g++ -pipe -L${PWD}/${ARCH}/libgcc" \
 CFLAGS_FOR_TARGET="-g -O3" \
 CXXFLAGS_FOR_TARGET="-g -O3" \
 LDFLAGS="-L/opt/x-tools/arm-linaro-linux-gnueabihf/lib/arm-linux-gnueabihf" \
@@ -50,5 +51,6 @@ make -j$(echo $(nproc)/2+1 | bc) \
 && \
 make DESTDIR=${GCCBIN} install-strip && \
 cd ${GCCBIN} && \
-tar cJf ${GCCTAR}
+tar cf - . | xz -z -T0 - > ${GCCTAR}
 cd ${START_PWD}
+test -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
