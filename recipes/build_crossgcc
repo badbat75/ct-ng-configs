@@ -8,6 +8,7 @@ GCCBIN=${HOME}/BINARIES/${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
 SYSROOT=${HOME}/mysysroot
 SCPDEST="pi@127.0.0.1:"
+SCPPPORT=5022
 START_PWD=${PWD}
 
 test ! -d ${GCCBUILD} && mkdir ${GCCBUILD}
