@@ -1,0 +1,54 @@
+#!/bin/bash
+ARCH=arm-linux-gnueabihf
+GCCVER=8.2.1
+GCCPKG="gcc-${ARCH}-${GCCVER}"
+GCCSRC="${HOME}/ct-ng-configs/.build/src/gcc-linaro-git-131f0279"
+GCCBUILD="${HOME}/BUILD/${GCCPKG}"
+GCCBIN="${HOME}/BINARIES/${GCCPKG}"
+GCCTAR="${HOME}/${GCCPKG}.tar.xz"
+SYSROOT="${HOME}/mysysroot"
+START_PWD=${PWD}
+
+test ! -d ${GCCBUILD} && mkdir ${GCCBUILD}
+test -d ${GCCBIN} && rm -rf ${GCCBIN}
+test -f ${GCCTAR} && rm -f ${GCCTAR}
+
+mkdir ${GCCBIN}
+cd ${GCCBUILD}
+${GCCSRC}/configure -v \
+--build=x86_64-linux-gnu --host=arm-linaro-linux-gnueabihf --target=arm-linaro-linux-gnueabihf \
+--program-suffix=-8.2.1 \
+--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
+\
+--prefix=/usr --includedir=/usr/include/arm-linux-gnueabihf --libdir=/usr/lib/arm-linux-gnueabihf/8.2.1 --libexecdir=/usr/lib --with-slibdir=/lib/arm-linux-gnueabihf/8.2.1 --sysconfdir=/etc \
+\
+--with-sysroot=/ \
+\
+--with-gmp-include=${SYSROOT}/usr/include/arm-linux-gnueabihf --with-gmp-lib=${SYSROOT}/usr/lib/arm-linux-gnueabihf --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
+\
+--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function \
+\
+--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
+\
+--disable-option-checking --disable-libitm --disable-libmpx \
+\
+--without-included-gettext \
+\
+CC_FOR_BUILD="ccache gcc -pipe" \
+CXX_FOR_BUILD="ccache g++ -pipe" \
+CC="ccache arm-linaro-linux-gnueabihf-gcc -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/arm-linux-gnueabihf" \
+CXX="ccache arm-linaro-linux-gnueabihf-g++ -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/arm-linux-gnueabihf" \
+CFLAGS="-g -O3" \
+CXXFLAGS="-g -O3" \
+CC_FOR_TARGET="ccache arm-linaro-linux-gnueabihf-gcc -pipe -L${PWD}/arm-linaro-linux-gnueabihf/libgcc" \
+CXX_FOR_TARGET="ccache arm-linaro-linux-gnueabihf-g++ -pipe -L${PWD}/arm-linaro-linux-gnueabihf/libgcc" \
+CFLAGS_FOR_TARGET="-g -O3" \
+CXXFLAGS_FOR_TARGET="-g -O3" \
+LDFLAGS="-L/opt/x-tools/arm-linaro-linux-gnueabihf/lib/arm-linux-gnueabihf" \
+&& \
+make -j$(echo $(nproc)/2+1 | bc) \
+&& \
+make DESTDIR=${GCCBIN} install-strip && \
+cd ${GCCBIN} && \
+tar cJf ${GCCTAR}
+cd ${START_PWD}
