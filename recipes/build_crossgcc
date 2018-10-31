@@ -53,4 +53,4 @@ make DESTDIR=${GCCBIN} install-strip && \
 cd ${GCCBIN} && \
 tar cf - . | xz -z -T0 - > ${GCCTAR}
 cd ${START_PWD}
-test -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
+test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
