@@ -2,7 +2,7 @@
 ARCH=arm-linux-gnueabihf
 GCCVER=8.2.1
 GCCPKG="gcc-${ARCH}-${GCCVER}"
-GCCSRC="${HOME}/ct-ng-configs/.build/src/gcc-linaro-git-131f0279"
+GCCSRC="${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08"
 GCCBUILD="${HOME}/BUILD/${GCCPKG}"
 GCCBIN="${HOME}/BINARIES/${GCCPKG}"
 GCCTAR="${HOME}/${GCCPKG}.tar.xz"
