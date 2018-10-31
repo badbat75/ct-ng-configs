@@ -1,12 +1,12 @@
 #!/bin/bash
 ARCH=arm-linux-gnueabihf
 GCCVER=8.2.1
-GCCPKG="gcc-${ARCH}-${GCCVER}"
-GCCSRC="${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08"
-GCCBUILD="${HOME}/BUILD/${GCCPKG}"
-GCCBIN="${HOME}/BINARIES/${GCCPKG}"
-GCCTAR="${HOME}/${GCCPKG}.tar.xz"
-SYSROOT="${HOME}/mysysroot"
+GCCPKG=gcc-${ARCH}-${GCCVER}
+GCCSRC=${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08
+GCCBUILD=${HOME}/BUILD/${GCCPKG}
+GCCBIN=${HOME}/BINARIES/${GCCPKG}
+GCCTAR=${HOME}/${GCCPKG}.tar.xz
+SYSROOT=${HOME}/mysysroot
 START_PWD=${PWD}
 
 test ! -d ${GCCBUILD} && mkdir ${GCCBUILD}
@@ -17,10 +17,10 @@ mkdir ${GCCBIN}
 cd ${GCCBUILD}
 ${GCCSRC}/configure -v \
 --build=x86_64-linux-gnu --host=arm-linaro-linux-gnueabihf --target=arm-linaro-linux-gnueabihf \
---program-suffix=-8.2.1 \
+--program-suffix=-${GCCVER} \
 --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 \
---prefix=/usr --includedir=/usr/include/arm-linux-gnueabihf --libdir=/usr/lib/arm-linux-gnueabihf/8.2.1 --libexecdir=/usr/lib --with-slibdir=/lib/arm-linux-gnueabihf/8.2.1 --sysconfdir=/etc \
+--prefix=/usr --includedir=/usr/include/arm-linux-gnueabihf --libdir=/usr/lib/arm-linux-gnueabihf/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/arm-linux-gnueabihf/${GCCVER} --sysconfdir=/etc \
 \
 --with-sysroot=/ \
 \
