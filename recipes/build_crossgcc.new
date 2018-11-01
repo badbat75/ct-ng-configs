@@ -8,7 +8,7 @@ GCCBIN=${HOME}/BINARIES/${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
 SYSROOT=${HOME}/mysysroot
 SCPDEST="pi@127.0.0.1:"
-SCPPPORT=5022
+SCPPORT=5022
 START_PWD=${PWD}
 
 test ! -d ${GCCBUILD} && mkdir -p ${GCCBUILD}
@@ -26,7 +26,7 @@ ${GCCSRC}/configure -v \
 \
 --with-sysroot=/ \
 \
---with-gmp-include=${SYSROOT}/usr/include/arm-linux-gnueabihf --with-gmp-lib=${SYSROOT}/usr/lib/arm-linux-gnueabihf --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
+--with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
 \
 --enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
 \
@@ -38,15 +38,15 @@ ${GCCSRC}/configure -v \
 \
 CC_FOR_BUILD="ccache gcc -pipe" \
 CXX_FOR_BUILD="ccache g++ -pipe" \
-CC="ccache arm-linux-gnueabihf-gcc -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/${ARCH}" \
-CXX="ccache arm-linux-gnueabihf-g++ -pipe --sysroot=${SYSROOT} -B${SYSROOT}/usr/lib/${ARCH}" \
+CC="ccache ${ARCH}-gcc -pipe --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+CXX="ccache ${ARCH}-g++ -pipe --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
 CFLAGS="-g -O3" \
 CXXFLAGS="-g -O3" \
-CC_FOR_TARGET="ccache arm-linux-gnueabihf-gcc -pipe -L${PWD}/${ARCH}/libgcc" \
-CXX_FOR_TARGET="ccache arm-linux-gnueabihf-g++ -pipe -L${PWD}/${ARCH}/libgcc" \
+LDFLAGS="-L${SYSROOT}/lib/${ARCH}" \
+CC_FOR_TARGET="ccache ${ARCH}-gcc -pipe" \
+CXX_FOR_TARGET="ccache ${ARCH}-g++ -pipe" \
 CFLAGS_FOR_TARGET="-g -O3" \
 CXXFLAGS_FOR_TARGET="-g -O3" \
-LDFLAGS="-L/opt/x-tools/arm-linaro-linux-gnueabihf/lib/arm-linux-gnueabihf" \
 && \
 make -j$(echo $(nproc)/2+1 | bc) \
 && \
@@ -54,5 +54,5 @@ make DESTDIR=${GCCBIN} install-strip && \
 cd ${GCCBIN} && \
 tar cf - . | xz -z -T0 - > ${GCCTAR}
 cd ${START_PWD}
-set -x
 test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
+#LDFLAGS_FOR_TARGET="-L${PWD}/${ARCH}/libgcc" \
