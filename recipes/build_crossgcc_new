@@ -38,15 +38,15 @@ ${GCCSRC}/configure -v \
 \
 CC_FOR_BUILD="ccache gcc -pipe" \
 CXX_FOR_BUILD="ccache g++ -pipe" \
-CC="ccache ${ARCH}-gcc -pipe --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
-CXX="ccache ${ARCH}-g++ -pipe --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
-CFLAGS="-g -O3" \
-CXXFLAGS="-g -O3" \
+CC="ccache ${ARCH}-gcc --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+CXX="ccache ${ARCH}-g++ --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+CFLAGS="-pipe -g -O3" \
+CXXFLAGS="-pipe -g -O3" \
 LDFLAGS="-L${SYSROOT}/lib/${ARCH}" \
-CC_FOR_TARGET="ccache ${ARCH}-gcc -pipe" \
-CXX_FOR_TARGET="ccache ${ARCH}-g++ -pipe" \
-CFLAGS_FOR_TARGET="-g -O3" \
-CXXFLAGS_FOR_TARGET="-g -O3" \
+CC_FOR_TARGET="ccache ${ARCH}-gcc" \
+CXX_FOR_TARGET="ccache ${ARCH}-g++" \
+CFLAGS_FOR_TARGET="-pipe -g -O3" \
+CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
 && \
 make -j$(echo $(nproc)/2+1 | bc) \
 && \
