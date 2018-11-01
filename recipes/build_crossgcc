@@ -11,11 +11,11 @@ SCPDEST="pi@127.0.0.1:"
 SCPPPORT=5022
 START_PWD=${PWD}
 
-test ! -d ${GCCBUILD} && mkdir ${GCCBUILD}
+test ! -d ${GCCBUILD} && mkdir -p ${GCCBUILD}
 test -d ${GCCBIN} && rm -rf ${GCCBIN}
 test -f ${GCCTAR} && rm -f ${GCCTAR}
 
-mkdir ${GCCBIN}
+mkdir -p ${GCCBIN}
 cd ${GCCBUILD}
 ${GCCSRC}/configure -v \
 --build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
@@ -28,7 +28,7 @@ ${GCCSRC}/configure -v \
 \
 --with-gmp-include=${SYSROOT}/usr/include/arm-linux-gnueabihf --with-gmp-lib=${SYSROOT}/usr/lib/arm-linux-gnueabihf --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
 \
---enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function \
+--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
 \
 --with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
 \
@@ -54,4 +54,5 @@ make DESTDIR=${GCCBIN} install-strip && \
 cd ${GCCBIN} && \
 tar cf - . | xz -z -T0 - > ${GCCTAR}
 cd ${START_PWD}
-test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
+set -x
+test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
