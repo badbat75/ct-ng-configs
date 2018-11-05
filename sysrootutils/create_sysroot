@@ -3,6 +3,10 @@ START_PWD=${PWD}
 SYSROOTUTILS_PATH=$(dirname $(realpath ${0}))
 cd ${SYSROOTUTILS_PATH}
 
+test ! -z "${1:-}" && DISTRO_NAME="${1}"
+test ! -z "${2:-}" && DISTRO_REL="${2}"
+test ! -z "${3:-}" && DISTRO_ARCH="${3}"
+
 test -z "${DISTRO_NAME:-}" && echo "No DISTRO_NAME defined" && exit 1
 test -z "${DISTRO_REL:-}" && echo "No DISTRO_REL defined" && exit 1
 test -z "${DISTRO_ARCH:-}" && echo "No DISTRO_ARCH defined" && exit 1
@@ -10,7 +14,7 @@ test -z "${DISTRO_ARCH:-}" && echo "No DISTRO_ARCH defined" && exit 1
 SRCFILE=${0}.src
 
 function raspbian () {
-    export SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
+    SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
     PKGPATH=$PWD/packages/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
     test -d ${SYSROOT} && rm -rf ${SYSROOT}
     test -d ${PKGPATH} && rm -rf ${PKGPATH}
@@ -22,7 +26,7 @@ function raspbian () {
         echo ${dl}
         wget -q -P${PKGPATH} --content-disposition "$dl"
     done
-    ./pkgextract
+    ./pkgextract -s ${SYSROOT} ${PKGPATH}/*
     rm -rf ${PKGPATH}
 }
 

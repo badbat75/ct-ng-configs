@@ -1,29 +1,74 @@
 #!/bin/bash
 
+unset FILELIST FILES
+
+while (( "$#" )); do
+	case ${1} in
+		-a|--arch)
+			shift
+			test -z "${1:-}" && echo "--arch specified without architecture." && exit 1
+        	ARCH="${1}"
+		;; 
+		-d|--debug)
+			set -x
+		;;
+		-h|--help)
+        	cat <<-EOF
+				$0 -s <sysroot> [parameters]
+
+				-a --arch:      Optional. Specify architecture tuple. Default: arm-linux-gnueabihf.
+				-s --sysroot:   Mandatory. Specify SYSROOT path.
+				-h --help:      This message.
+			EOF
+    		exit 0
+    	;;
+		-s|--sysroot)
+    		shift
+			test -z "${1:-}" && echo "--sysroot specified without SYSROOT path." && exit 1
+	        SYSROOT="${1}"
+		;;
+		-*|--*)
+			echo "${1}: not a valid parameter"
+		;;
+		*)
+			FILELIST="${FILELIST} $1"
+		;;
+	esac
+	shift
+done
+
 test -z "${SYSROOT:-}" && echo "SYSROOT not set" && exit 1
+test -z "${ARCH:-}" && ARCH="arm-linux-gnueabihf"
 
 echo "SYSROOT: ${SYSROOT}"
 echo
 
-[ "x$1" == "x" ] && PARM="*.deb" || PARM="$1*.deb"
-
-for file in $(find -name "${PARM}");
+for item in ${FILELIST}
 do
-	echo -n "Extracting $file... "
-	ar x $file data.tar.xz && 
+	FILES="${FILES} $(ls ${item})"
+done
+
+test ! -d "/tmp/pkgextract" && mkdir /tmp/pkgextract
+cd /tmp/pkgextract
+for item in ${FILES}
+do
+	echo -n "Extracting $(basename ${item})... "
+	ar x ${item} data.tar.xz && 
 	tar xJf data.tar.xz -C ${SYSROOT} &&
 	rm data.tar.xz
 	echo "done."
 done
+cd -
+rmdir /tmp/pkgextract
 
 echo
 
-if [ -d ${SYSROOT}/usr/lib/arm-linux-gnueabihf ]
+if [ -d ${SYSROOT}/usr/lib/${ARCH} ]
 then
-	for i in $(find -L ${SYSROOT}/usr/lib/arm-linux-gnueabihf -lname "/lib/arm-linux-gnueabihf*");
+	for i in $(find -L ${SYSROOT}/usr/lib/${ARCH} -lname "/lib/${ARCH}*");
 	do
-	        echo -n "Relinking $i... "
-	        ln -f -s ../../..$(readlink $i) $i
+	        echo -n "Relinking $(basename ${i})... "
+	        ln -f -s ../../..$(readlink ${i}) ${i}
 		echo "done."
 	done
 fi
