@@ -49,8 +49,6 @@ then
 
 	export LD_LIBRARY_PATH="${SYSROOT}/usr/lib:${SYSROOT}/lib"
 
-	export CT_XLDD_ROOT=${SYSROOT}
-
 	echo
 	echo "CC: 			${CC}"
 	echo "CFLAGS: 		${CFLAGS}"
@@ -64,8 +62,6 @@ then
 	echo "PKG_CONFIG_SYSROOT_DIR: ${PKG_CONFIG_SYSROOT_DIR}"
 	echo
 	echo "LD_LIBRARY_PATH:	${LD_LIBRARY_PATH}"
-	echo
-	echo "CT_XLDD_ROOT: 		${CT_XLDD_ROOT}"
 fi
 echo
 echo "Starting nested bash shell. Run exit or CTRL+D to return to the main shell"
