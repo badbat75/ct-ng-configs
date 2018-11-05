@@ -3,3 +3,4 @@
 .config.old
 build.log
 sysrootutils/packages/*
+sysroots

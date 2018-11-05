@@ -11,7 +11,7 @@ for file in $(find -name "${PARM}");
 do
 	echo -n "Extracting $file... "
 	ar x $file data.tar.xz && 
-	tar xJvf data.tar.xz -C ${SYSROOT} &&
+	tar xJf data.tar.xz -C ${SYSROOT} &&
 	rm data.tar.xz
 	echo "done."
 done

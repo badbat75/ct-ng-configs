@@ -1,4 +1,8 @@
 #!/bin/bash
+START_PWD=${PWD}
+RECIPE_PATH=$(dirname $(realpath ${0}))
+cd ${RECIPE_PATH}
+
 ARCH=arm-linux-gnueabihf
 GCCVER=8.2.1
 GCCPKG=gcc-${ARCH}-${GCCVER}
@@ -6,17 +10,26 @@ GCCSRC=${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08
 GCCBUILD=${HOME}/BUILD/${GCCPKG}
 GCCBIN=${HOME}/BINARIES/${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
-SYSROOT=${HOME}/mysysroot
-SCPDEST="pi@127.0.0.1:"
-SCPPORT=5022
-START_PWD=${PWD}
+export DISTRO_NAME=raspbian
+export DISTRO_REL=stretch
+export DISTRO_ARCH=${ARCH}
+SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
+#SCPDEST="pi@127.0.0.1:"
+#SCPPORT=5022
 
-test ! -d ${GCCBUILD} && mkdir -p ${GCCBUILD}
+test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
 test -d ${GCCBIN} && rm -rf ${GCCBIN}
 test -f ${GCCTAR} && rm -f ${GCCTAR}
 
+echo "Creating SYSROOT environment..."
+../sysrootutils/create_sysroot || exit 1
+echo "Done"
+echo ""
+
+mkdir -p ${GCCBUILD}
 mkdir -p ${GCCBIN}
 cd ${GCCBUILD}
+echo "Configuring GCC..."
 ${GCCSRC}/configure -v \
 --build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
 --program-suffix=-${GCCVER} \
@@ -48,11 +61,18 @@ CXX_FOR_TARGET="ccache ${ARCH}-g++" \
 CFLAGS_FOR_TARGET="-pipe -g -O3" \
 CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
 && \
-make -j$(echo $(nproc)/2+1 | bc) \
-&& \
+echo "Done" && \
+echo "" && \
+echo "Compiling GCC..." && \
+make -j$(echo $(nproc)/2+1 | bc) && \
+echo "Done." && \
+echo "" && \
+echo "Installing GCC..." && \
 make DESTDIR=${GCCBIN} install-strip && \
+echo "Done." && \
+echo "" && \
+rm -rf ${GCCBUILD} && \
 cd ${GCCBIN} && \
 tar cf - . | xz -z -T0 - > ${GCCTAR}
 cd ${START_PWD}
 test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
-#LDFLAGS_FOR_TARGET="-L${PWD}/${ARCH}/libgcc" \
