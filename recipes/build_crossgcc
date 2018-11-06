@@ -11,9 +11,16 @@ BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
 GCCVER=8.2.1
 GCCPKG=gcc-${ARCH}-${GCCVER}
 GCCSRC=${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08
+GCCCOMMONCONFIG="--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
+\
+--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
+\
+--disable-option-checking --disable-libitm --disable-libmpx \
+\
+--without-included-gettext"
 GCCBUILD=${HOME}/BUILD/${GCCPKG}
 GCCBIN=${HOME}/BINARIES/${GCCPKG}
-GCCPHASE2=${HOME}/BINARIES/x${GCCPKG}
+XGCCBIN=${HOME}/BINARIES/x${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
 DISTRO_NAME=raspbian
 DISTRO_REL=stretch
@@ -21,12 +28,12 @@ DISTRO_ARCH=${ARCH}
 SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
 #SCPDEST="pi@127.0.0.1:"
 #SCPPORT=5022
-export PATH="${GCCPHASE2}/bin:${PATH}"
+export PATH="${XGCCBIN}/bin:${PATH}"
 
 function objdump_bug_workaround () {
     ### Apply objdump libcc1 configure bug workaround
     echo "Applying objdump configuration workaround for final GCC..."
-    cd ${GCCPHASE2}/bin
+    cd ${XGCCBIN}/bin
     for file in $(ls)
     do
         ln -s ${file}
@@ -51,7 +58,7 @@ function binutils () {
     --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
     --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
     \
-    --prefix=${GCCPHASE2} --libdir=${GCCPHASE2}/lib/${ARCH} --libexecdir=${GCCPHASE2}/lib \
+    --prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
     \
     --with-sysroot=${SYSROOT} \
     \
@@ -82,8 +89,8 @@ function binutils () {
 }
 
 function cross_gcc () {
-    test -d ${GCCPHASE2} && rm -rf ${GCCPHASE2}
-    mkdir -p ${GCCPHASE2}
+    test -d ${XGCCBIN} && rm -rf ${XGCCBIN}
+    mkdir -p ${XGCCBIN}
     binutils || exit 1
     mkdir -p ${GCCBUILD}
     cd ${GCCBUILD}
@@ -92,17 +99,11 @@ function cross_gcc () {
     --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
     --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
     \
-    --prefix=${GCCPHASE2} --libdir=${GCCPHASE2}/lib/${ARCH} --libexecdir=${GCCPHASE2}/lib \
+    --prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
     \
     --with-sysroot=${SYSROOT} \
-    \    \
-    --enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
     \
-    --with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
-    \
-    --disable-option-checking --disable-libitm --disable-libmpx \
-    \
-    --without-included-gettext \
+    ${GCCCOMMONCONFIG}
     \
     CC_FOR_BUILD="ccache gcc -pipe" \
     CXX_FOR_BUILD="ccache g++ -pipe" \
@@ -134,7 +135,7 @@ function final_gcc () {
     test -d ${GCCBIN} && rm -rf ${GCCBIN}
     mkdir -p ${GCCBIN}
     cd ${GCCBUILD}
-    echo "Configuring GCC for final stage..."
+    echo "Configuring Final GCC..."
     ${GCCSRC}/configure -v \
     --build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
     --program-suffix=-${GCCVER} \
@@ -146,13 +147,7 @@ function final_gcc () {
     \
     --with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
     \
-    --enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
-    \
-    --with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
-    \
-    --disable-option-checking --disable-libitm --disable-libmpx \
-    \
-    --without-included-gettext \
+    ${GCCCOMMONCONFIG}
     \
     CC_FOR_BUILD="ccache gcc -pipe" \
     CXX_FOR_BUILD="ccache g++ -pipe" \
@@ -168,11 +163,11 @@ function final_gcc () {
     && \
     echo "Done" && \
     echo "" && \
-    echo "Compiling GCC..." && \
+    echo "Compiling Final GCC..." && \
     make -j$(echo $(nproc)/2+1 | bc) && \
     echo "Done." && \
     echo "" && \
-    echo "Installing GCC..." && \
+    echo "Installing Final GCC..." && \
     make DESTDIR=${GCCBIN} install-strip && \
     echo "Done." && \
     echo "" && \
