@@ -176,13 +176,17 @@ function test_gcc () {
     ${ARCH}-gcc -v 2>&1 > /dev/null
 }
 
+function zip_gcc () {
+    test -f ${GCCTAR} && rm -f ${GCCTAR}
+    cd ${GCCBIN} && \
+    tar cf - . | xz -z -T0 - > ${GCCTAR}
+}
+
 create_sysroot || exit 1
 cross_gcc || exit 1
 test_gcc || exit 1
 final_gcc || exit 1
+zip_gcc || exit 1
 
-test -f ${GCCTAR} && rm -f ${GCCTAR}
-cd ${GCCBIN} && \
-tar cf - . | xz -z -T0 - > ${GCCTAR}
-cd ${START_PWD}
 test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
+cd ${START_PWD}
