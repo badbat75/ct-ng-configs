@@ -23,170 +23,196 @@ DISTRO_NAME=raspbian
 DISTRO_REL=stretch
 DISTRO_ARCH=${ARCH}
 SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
+NTHREADS=$(echo $(nproc)/2+1 | bc)
 #SCPDEST="pi@127.0.0.1:"
 #SCPPORT=5022
 export PATH="${XGCCBIN}/bin:${PATH}"
 
 function objdump_bug_workaround () {
-    ### Apply objdump libcc1 configure bug workaround
-    echo "Applying objdump configuration workaround for final GCC..."
-    cd ${XGCCBIN}/bin
-    for file in $(ls)
-    do
-        ln -s ${file}
-        $(echo ${file} | sed 's/arm-/arm-unknown-/g')
-    done
-    cd -
+	### Apply objdump libcc1 configure bug workaround
+	echo "Applying objdump configuration workaround for final GCC..."
+	cd ${XGCCBIN}/bin
+	for file in $(ls)
+	do
+		ln -s ${file} $(echo ${file} | sed 's/arm-/arm-unknown-/g')
+	done
+	cd -
 }
 
 function create_sysroot() {
-    echo "Creating SYSROOT environment..."
-    ../sysrootutils/create_sysroot ${DISTRO_NAME} ${DISTRO_REL} ${DISTRO_ARCH} || exit 1
-    echo "Done"
-    echo ""
+	echo "Creating SYSROOT environment..."
+	../sysrootutils/create_sysroot ${DISTRO_NAME} ${DISTRO_REL} ${DISTRO_ARCH} || exit 1
+	echo "Done"
+	echo ""
 }
 
 function binutils () {
-    test -d ${BINUTILSBUILD} && rm -rf ${BINUTILSBUILD}
-    mkdir -p ${BINUTILSBUILD}
-    cd ${BINUTILSBUILD}
-    echo "Configuring BINUTILS..."
-    ${BINUTILSSRC}/configure -v \
-    --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
-    --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
-    \
-    --prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
-    \
-    --with-sysroot=${SYSROOT} \
-    \
-    --enable-libquadmath --enable-libquadmath-support --enable-libssp --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-lto \
-    \
-    --with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
-    CC_FOR_BUILD="ccache gcc -pipe" \
-    CXX_FOR_BUILD="ccache g++ -pipe" \
-    CC="ccache gcc" \
-    CXX="ccache g++" \
-    CFLAGS="-pipe -g -O3" \
-    CXXFLAGS="-pipe -g -O3" \
-    CFLAGS_FOR_TARGET="-pipe -g -O3" \
-    CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-    && \
-    echo "Done" && \
-    echo "" && \
-    echo "Compiling BINUTILS..." && \
-    make -j$(echo $(nproc)/2+1 | bc) && \
-    echo "Done." && \
-    echo "" && \
-    echo "Installing BINUTILS..." && \
-    make install-strip && \
-    echo "Done." && \
-    echo "" && \
-    cd .. && \
-    rm -rf ${BINUTILSBUILD}
+	test -d ${BINUTILSBUILD} && rm -rf ${BINUTILSBUILD}
+	mkdir -p ${BINUTILSBUILD}
+	cd ${BINUTILSBUILD}
+	echo "Configuring BINUTILS..."
+	${BINUTILSSRC}/configure -v \
+	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
+	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
+	\
+	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
+	\
+	--with-sysroot=${SYSROOT} \
+	\
+	--enable-libquadmath --enable-libquadmath-support --enable-libssp --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-lto \
+	\
+	--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
+	CC_FOR_BUILD="ccache gcc -pipe" \
+	CXX_FOR_BUILD="ccache g++ -pipe" \
+	CC="ccache gcc" \
+	CXX="ccache g++" \
+	CFLAGS="-pipe -g -O3" \
+	CXXFLAGS="-pipe -g -O3" \
+	CFLAGS_FOR_TARGET="-pipe -g -O3" \
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	echo "Done"
+	echo ""
+	echo "Compiling BINUTILS..."
+	make -j${NTHREADS} || exit 1
+	echo "Done."
+	echo ""
+	echo "Installing BINUTILS..."
+	make install-strip || exit 1
+	echo "Done."
+	echo ""
+	cd ..
+	rm -rf ${BINUTILSBUILD}
 }
 
 function cross_gcc () {
-    test -d ${XGCCBIN} && rm -rf ${XGCCBIN}
-    mkdir -p ${XGCCBIN}
-    binutils || exit 1
-    mkdir -p ${GCCBUILD}
-    cd ${GCCBUILD}
-    echo "Configuring CrossGCC..."
-    ${GCCSRC}/configure -v \
-    --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
-    --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
-    \
-    --prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
-    \
-    --with-sysroot=${SYSROOT} \
-    \
-    ${GCCCOMMONCONFIG}
-    \
-    CC_FOR_BUILD="ccache gcc -pipe" \
-    CXX_FOR_BUILD="ccache g++ -pipe" \
-    CC="ccache gcc" \
-    CXX="ccache g++" \
-    CFLAGS="-pipe -g -O3" \
-    CXXFLAGS="-pipe -g -O3" \
-    CFLAGS_FOR_TARGET="-pipe -g -O3" \
-    CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-    && \
-    echo "Done" && \
-    echo "" && \
-    echo "Compiling CrossGCC..." && \
-    make -j$(echo $(nproc)/2+1 | bc) && \
-    echo "Done." && \
-    echo "" && \
-    echo "Installing CrossGCC..." && \
-    make install-strip && \
-    objdump_bug_workaround && \
-    echo "Done." && \
-    echo "" && \
-    cd .. && \
-    rm -rf ${GCCBUILD}
+	test -d ${XGCCBIN} && rm -rf ${XGCCBIN}
+	mkdir -p ${XGCCBIN}
+	binutils || exit 1
+	test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
+	mkdir -p ${GCCBUILD}
+	cd ${GCCBUILD}
+	echo "Configuring CrossGCC..."
+	${GCCSRC}/configure -v \
+	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
+	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
+	\
+	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
+	\
+	--with-sysroot=${SYSROOT} \
+	\
+	${GCCCOMMONCONFIG}
+	\
+	CC_FOR_BUILD="ccache gcc -pipe" \
+	CXX_FOR_BUILD="ccache g++ -pipe" \
+	CC="ccache gcc" \
+	CXX="ccache g++" \
+	CFLAGS="-pipe -g -O3" \
+	CXXFLAGS="-pipe -g -O3" \
+	CFLAGS_FOR_TARGET="-pipe -g -O3" \
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	echo "Done"
+	echo ""
+	echo "Compiling CrossGCC..."
+	make -j${NTHREADS} || exit 1
+	echo "Done."
+	echo ""
+	echo "Installing CrossGCC..."
+	make install-strip || exit 1
+	objdump_bug_workaround || exit 1
+	echo "Done."
+	echo ""
+	cd ..
+	rm -rf ${GCCBUILD}
 }
 
 function final_gcc () {
-    test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
-    mkdir -p ${GCCBUILD}
-    test -d ${GCCBIN} && rm -rf ${GCCBIN}
-    mkdir -p ${GCCBIN}
-    cd ${GCCBUILD}
-    echo "Configuring Final GCC..."
-    ${GCCSRC}/configure -v \
-    --build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
-    --program-suffix=-${GCCVER} \
-    --with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
-    \
-    --prefix=/usr --libdir=/usr/lib/${ARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${ARCH}/${GCCVER} \
-    \
-    --with-sysroot=/ \
-    \
-    --with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
-    \
-    ${GCCCOMMONCONFIG}
-    \
-    CC_FOR_BUILD="ccache gcc -pipe" \
-    CXX_FOR_BUILD="ccache g++ -pipe" \
-    CC="ccache ${ARCH}-gcc --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
-    CXX="ccache ${ARCH}-g++ --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
-    CFLAGS="-pipe -g -O3" \
-    CXXFLAGS="-pipe -g -O3" \
-    LDFLAGS="-L${SYSROOT}/lib/${ARCH}" \
-    CC_FOR_TARGET="ccache ${ARCH}-gcc" \
-    CXX_FOR_TARGET="ccache ${ARCH}-g++" \
-    CFLAGS_FOR_TARGET="-pipe -g -O3" \
-    CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-    && \
-    echo "Done" && \
-    echo "" && \
-    echo "Compiling Final GCC..." && \
-    make -j$(echo $(nproc)/2+1 | bc) && \
-    echo "Done." && \
-    echo "" && \
-    echo "Installing Final GCC..." && \
-    make DESTDIR=${GCCBIN} install-strip && \
-    echo "Done." && \
-    echo "" && \
-    cd .. && \
-    rm -rf ${GCCBUILD}
+	test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
+	mkdir -p ${GCCBUILD}
+	test -d ${GCCBIN} && rm -rf ${GCCBIN}
+	mkdir -p ${GCCBIN}
+	cd ${GCCBUILD}
+	echo "Configuring Final GCC..."
+	${GCCSRC}/configure -v \
+	--build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
+	--program-suffix=-${GCCVER} \
+	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
+	\
+	--prefix=/usr --libdir=/usr/lib/${ARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${ARCH}/${GCCVER} \
+	\
+	--with-sysroot=/ \
+	\
+	--with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
+	\
+	${GCCCOMMONCONFIG}
+	\
+	CC_FOR_BUILD="ccache gcc -pipe" \
+	CXX_FOR_BUILD="ccache g++ -pipe" \
+	CC="ccache ${ARCH}-gcc --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+	CXX="ccache ${ARCH}-g++ --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+	CFLAGS="-pipe -g -O3" \
+	CXXFLAGS="-pipe -g -O3" \
+	LDFLAGS="-L${SYSROOT}/lib/${ARCH}" \
+	CC_FOR_TARGET="ccache ${ARCH}-gcc" \
+	CXX_FOR_TARGET="ccache ${ARCH}-g++" \
+	CFLAGS_FOR_TARGET="-pipe -g -O3" \
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	echo "Done"
+	echo ""
+	echo "Compiling Final GCC..."
+	make -j${NTHREADS} || exit 1
+	echo "Done."
+	echo ""
+	echo "Installing Final GCC..."
+	make DESTDIR=${GCCBIN} install-strip || exit 1
+	echo "Done."
+	echo ""
+	cd ..
+	rm -rf ${GCCBUILD}
 }
 
-function test_gcc () {
-    ${ARCH}-gcc -v 2>&1 > /dev/null
+function test_xgcc () {
+	echo -n "Testing XGCC..."
+	CPUARCH=$(echo ${ARCH} | sed 's/\(+*\)-.*/\1/g')
+	QEMU=0
+	test -f "$(which qemu-${CPUARCH} 2>/dev/null)" && QEMU=1
+	TESTSTRING="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
+	cat > /tmp/${TESTSTRING}.c <<-EOF
+		#include <stdio.h>
+
+		int
+		main (void)
+		{
+		printf ("${TESTSTRING}\n");
+		return 0;
+		}
+	EOF
+	echo -n "Compile test..."
+	${ARCH}-gcc /tmp/${TESTSTRING}.c -o /tmp/${TESTSTRING} || exit 1
+	if [ "${QEMU}" -eq "1" ]
+	then
+		echo -n "Test executable with qemu-${CPUARCH}..."
+		TEST=$(qemu-${CPUARCH} -L ${SYSROOT} /tmp/${TESTSTRING}) || exit 1
+		[ ! "${TEST}" == "${TESTSTRING}" ] && exit 1
+	fi
+	rm -f /tmp/${TESTSTRING}.c /tmp/${TESTSTRING}
+	echo "Done."
 }
 
 function zip_gcc () {
-    test -f ${GCCTAR} && rm -f ${GCCTAR}
-    cd ${GCCBIN} && \
-    tar cf - . | xz -z -T0 - > ${GCCTAR}
+	test -f ${GCCTAR} && rm -f ${GCCTAR}
+	cd ${GCCBIN} && \
+	tar cf - . | xz -z -T0 - > ${GCCTAR}
+}
+
+function send_gcc () {
+	test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
 }
 
 create_sysroot || exit 1
 cross_gcc || exit 1
-test_gcc || exit 1
+test_xgcc || exit 1
 final_gcc || exit 1
 zip_gcc || exit 1
+send_gcc
 
-test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
 cd ${START_PWD}
