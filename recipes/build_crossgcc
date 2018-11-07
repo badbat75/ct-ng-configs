@@ -179,7 +179,7 @@ function final_gcc () {
 	echo -n "Configuring Final GCC..."
 	${GCCSRC}/configure -v \
 	--build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
-	--program-suffix=-${GCCVER} \
+	--program-suffix=-${GCCVER} --program-prefix=${ARCH}- \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
 	--prefix=/usr --libdir=/usr/lib/${ARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${ARCH}/${GCCVER} \
