@@ -5,10 +5,12 @@ cd ${RECIPE_PATH}
 
 ARCH=arm-linux-gnueabihf
 SOURCES=${HOME}/SOURCES
+BINARIES=${HOME}/BINARIES
 BINUTILSVER=2.31.1
 BINUTILSURL="https://mirror2.mirror.garr.it/mirrors/gnuftp/binutils/binutils-${BINUTILSVER}.tar.xz"
 BINUTILSPKG=binutils-${ARCH}-${BINUTILSVER}
 BINUTILSSRC=${SOURCES}/binutils-${BINUTILSVER}
+BINUTILSLOG=${BINARIES}/binutils-${BINUTILSVER}.log
 #BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
 GCCVER=8.2.1
 GCCURL="https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-src-snapshot-8.2-2018.08.tar.xz?revision=849f3c32-b965-4205-b5c3-80871b389953&ln=en"
@@ -19,9 +21,11 @@ GCCCOMMONCONFIG="--enable-languages=c,c++  --enable-shared --enable-linker-build
 --disable-option-checking --disable-libitm --disable-libmpx \
 --without-included-gettext"
 #GCCBUILD=${HOME}/BUILD/${GCCPKG}
-GCCBIN=${HOME}/BINARIES/${GCCPKG}
-GCCTAR=${HOME}/${GCCPKG}.tar.xz
-XGCCBIN=${HOME}/BINARIES/x${GCCPKG}
+GCCBIN=${BINARIES}/${GCCPKG}
+GCCLOG=${GCCBIN}.log
+GCCTAR=${BINARIES}/${GCCPKG}.tar.xz
+XGCCBIN=${BINARIES}/x${GCCPKG}
+XGCCLOG=${XGCCBIN}.log
 DISTRO_NAME=raspbian
 DISTRO_REL=stretch
 DISTRO_ARCH=${ARCH}
@@ -55,7 +59,7 @@ function prepare_sources () {
 	fi
 }
 
-function objdump_bug_workaround () {
+function program_transform_regex () {
 	### Apply objdump libcc1 configure bug workaround
 	echo "Applying objdump configuration workaround for final GCC..."
 	cd ${XGCCBIN}/bin
@@ -82,7 +86,7 @@ function binutils () {
 		BINUTILSBUILD=$(mktemp -d)
 	fi
 	cd ${BINUTILSBUILD}
-	echo "Configuring BINUTILS..."
+	echo -n "Configuring BINUTILS..."
 	${BINUTILSSRC}/configure -v \
 	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
@@ -101,16 +105,15 @@ function binutils () {
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
-	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
+	> ${BINUTILSLOG} 2>&1 || exit 1
 	echo "Done"
-	echo ""
-	echo "Compiling BINUTILS..."
-	make -j${NTHREADS} || exit 1
+	echo -n "Compiling BINUTILS..."
+	make -j${NTHREADS} > ${BINUTILSLOG} 2>&1 || exit 1
 	echo "Done."
-	echo ""
-	echo "Installing BINUTILS..."
-	make install-strip || exit 1
-	objdump_bug_workaround || exit 1
+	echo -n "Installing BINUTILS..."
+	make install-strip > ${BINUTILSLOG} 2>&1 || exit 1
+#	objdump_bug_workaround || exit 1
 	echo "Done."
 	echo ""
 	cd ..
@@ -129,7 +132,7 @@ function cross_gcc () {
 		XGCCBUILD=$(mktemp -d)
 	fi
 	cd ${XGCCBUILD}
-	echo "Configuring CrossGCC..."
+	echo -n "Configuring CrossGCC..."
 	${GCCSRC}/configure -v \
 	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
@@ -147,16 +150,16 @@ function cross_gcc () {
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
-	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
+	> ${XGCCLOG} 2>&1 || exit 1
 	echo "Done"
-	echo ""
-	echo "Compiling CrossGCC..."
-	make -j${NTHREADS} || exit 1
+	echo -n "Compiling CrossGCC..."
+	make -j${NTHREADS} > ${XGCCLOG} 2>&1 || exit 1
 	echo "Done."
-	echo ""
-	echo "Installing CrossGCC..."
-	make install-strip || exit 1
+	echo -n "Installing CrossGCC..."
+	make install-strip > ${XGCCLOG} 2>&1 || exit 1
 	echo "Done."
+	echo "You can find the final CrossGCC binaries for ${ARCH} here: ${XGCCBIN}"
 	echo ""
 	cd ..
 	rm -rf ${XGCCBUILD}
@@ -173,7 +176,7 @@ function final_gcc () {
 		GCCBUILD=$(mktemp -d)
 	fi
 	cd ${GCCBUILD}
-	echo "Configuring Final GCC..."
+	echo -n "Configuring Final GCC..."
 	${GCCSRC}/configure -v \
 	--build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
 	--program-suffix=-${GCCVER} \
@@ -197,16 +200,17 @@ function final_gcc () {
 	CC_FOR_TARGET="ccache ${ARCH}-gcc" \
 	CXX_FOR_TARGET="ccache ${ARCH}-g++" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
-	CXXFLAGS_FOR_TARGET="-pipe -g -O3" || exit 1
+	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
+	host_configargs="gcc_cv_objdump=${ARCH}-objdump" \
+	> ${GCCLOG} 2>&1 || exit 1
 	echo "Done"
-	echo ""
-	echo "Compiling Final GCC..."
-	make -j${NTHREADS} || exit 1
+	echo -n "Compiling Final GCC..."
+	make -j${NTHREADS} > ${GCCLOG} 2>&1 || exit 1
 	echo "Done."
-	echo ""
-	echo "Installing Final GCC..."
-	make DESTDIR=${GCCBIN} install-strip || exit 1
+	echo -n "Installing Final GCC..."
+	make DESTDIR=${GCCBIN} install-strip > ${GCCLOG} 2>&1 || exit 1
 	echo "Done."
+	echo "You can find the final GCC binaries for ${ARCH} here: ${GCCBIN}"
 	echo ""
 	cd ..
 	rm -rf ${GCCBUILD}
@@ -238,18 +242,24 @@ function test_xgcc () {
 	fi
 	rm -f /tmp/${TESTSTRING}.c /tmp/${TESTSTRING}
 	echo "Done."
+	echo ""
 }
 
 function zip_gcc () {
+	echo -n "Zipping final GCC..."
 	test -f ${GCCTAR} && rm -f ${GCCTAR}
 	cd ${GCCBIN} && \
 	tar cf - . | xz -z -T0 - > ${GCCTAR}
+	echo "Done."
+	echo "You can find the final GCC package here: ${GCCTAR}"
+	echo ""
 }
 
 function send_gcc () {
 	test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
 }
 
+test ! -d ${BINARIES} && mkdir -p ${BINARIES}
 create_sysroot || exit 1
 prepare_sources || exit 1
 cross_gcc || exit 1
