@@ -4,21 +4,24 @@ RECIPE_PATH=$(dirname $(realpath ${0}))
 cd ${RECIPE_PATH}
 
 ARCH=arm-linux-gnueabihf
+SOURCES=${HOME}/SOURCES
 BINUTILSVER=2.31.1
+BINUTILSURL="https://mirror2.mirror.garr.it/mirrors/gnuftp/binutils/binutils-${BINUTILSVER}.tar.xz"
 BINUTILSPKG=binutils-${ARCH}-${BINUTILSVER}
-BINUTILSSRC=${HOME}/SOURCES/binutils-${BINUTILSVER}
-BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
+BINUTILSSRC=${SOURCES}/binutils-${BINUTILSVER}
+#BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
 GCCVER=8.2.1
+GCCURL="https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-src-snapshot-8.2-2018.08.tar.xz?revision=849f3c32-b965-4205-b5c3-80871b389953&ln=en"
 GCCPKG=gcc-${ARCH}-${GCCVER}
-GCCSRC=${HOME}/SOURCES/gcc-arm-src-snapshot-8.2-2018.08
+GCCSRC=${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08
 GCCCOMMONCONFIG="--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
 --with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
 --disable-option-checking --disable-libitm --disable-libmpx \
 --without-included-gettext"
-GCCBUILD=${HOME}/BUILD/${GCCPKG}
+#GCCBUILD=${HOME}/BUILD/${GCCPKG}
 GCCBIN=${HOME}/BINARIES/${GCCPKG}
-XGCCBIN=${HOME}/BINARIES/x${GCCPKG}
 GCCTAR=${HOME}/${GCCPKG}.tar.xz
+XGCCBIN=${HOME}/BINARIES/x${GCCPKG}
 DISTRO_NAME=raspbian
 DISTRO_REL=stretch
 DISTRO_ARCH=${ARCH}
@@ -27,6 +30,30 @@ NTHREADS=$(echo $(nproc)/2+1 | bc)
 #SCPDEST="pi@127.0.0.1:"
 #SCPPORT=5022
 export PATH="${XGCCBIN}/bin:${PATH}"
+
+function prepare_sources () {
+	test ! -d ${SOURCES} && mkdir -p ${SOURCES}
+	if [ ! -f "${BINUTILSSRC}/configure" ]
+	then
+		echo -n "Downloading BINUTILS..."
+		wget -q -P${SOURCES} --content-disposition "${BINUTILSURL}" || exit 1
+		echo "Done."
+		echo -n "Uncompress BINUTILS..."
+		tar xJf ${SOURCES}/binutils-${BINUTILSVER}.tar.xz -C${SOURCES} || exit 1
+		echo "Done."
+		echo ""
+	fi
+	if [ ! -f "${GCCSRC}/configure" ]
+	then
+		echo -n "Downloading GCC..."
+		wget -q -P${SOURCES} --content-disposition "${GCCURL}" || exit 1
+		echo "Done."
+		echo -n "Uncompress GCC..."
+		tar xJf ${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08.tar.xz -C${SOURCES} || exit 1
+		echo "Done."
+		echo ""
+	fi
+}
 
 function objdump_bug_workaround () {
 	### Apply objdump libcc1 configure bug workaround
@@ -47,8 +74,13 @@ function create_sysroot() {
 }
 
 function binutils () {
-	test -d ${BINUTILSBUILD} && rm -rf ${BINUTILSBUILD}
-	mkdir -p ${BINUTILSBUILD}
+	if [ "x${BINUTILSBUILD}" != "x" ]
+	then
+		test -d ${BINUTILSBUILD} && rm -rf ${BINUTILSBUILD}
+		mkdir -p ${BINUTILSBUILD}
+	else
+		BINUTILSBUILD=$(mktemp -d)
+	fi
 	cd ${BINUTILSBUILD}
 	echo "Configuring BINUTILS..."
 	${BINUTILSSRC}/configure -v \
@@ -78,6 +110,7 @@ function binutils () {
 	echo ""
 	echo "Installing BINUTILS..."
 	make install-strip || exit 1
+	objdump_bug_workaround || exit 1
 	echo "Done."
 	echo ""
 	cd ..
@@ -88,9 +121,14 @@ function cross_gcc () {
 	test -d ${XGCCBIN} && rm -rf ${XGCCBIN}
 	mkdir -p ${XGCCBIN}
 	binutils || exit 1
-	test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
-	mkdir -p ${GCCBUILD}
-	cd ${GCCBUILD}
+	if [ "x${XGGBUILD}" != "x" ]
+	then
+		test -d ${XGCCBUILD} && rm -rf ${XGCCBUILD}
+		mkdir -p ${XGCCBUILD}
+	else
+		XGCCBUILD=$(mktemp -d)
+	fi
+	cd ${XGCCBUILD}
 	echo "Configuring CrossGCC..."
 	${GCCSRC}/configure -v \
 	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
@@ -100,7 +138,7 @@ function cross_gcc () {
 	\
 	--with-sysroot=${SYSROOT} \
 	\
-	${GCCCOMMONCONFIG}
+	${GCCCOMMONCONFIG} \
 	\
 	CC_FOR_BUILD="ccache gcc -pipe" \
 	CXX_FOR_BUILD="ccache g++ -pipe" \
@@ -118,18 +156,22 @@ function cross_gcc () {
 	echo ""
 	echo "Installing CrossGCC..."
 	make install-strip || exit 1
-	objdump_bug_workaround || exit 1
 	echo "Done."
 	echo ""
 	cd ..
-	rm -rf ${GCCBUILD}
+	rm -rf ${XGCCBUILD}
 }
 
 function final_gcc () {
-	test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
-	mkdir -p ${GCCBUILD}
 	test -d ${GCCBIN} && rm -rf ${GCCBIN}
 	mkdir -p ${GCCBIN}
+	if [ "x${GCCBUILD}" != "x" ]
+	then
+		test -d ${GCCBUILD} && rm -rf ${GCCBUILD}
+		mkdir -p ${GCCBUILD}
+	else
+		GCCBUILD=$(mktemp -d)
+	fi
 	cd ${GCCBUILD}
 	echo "Configuring Final GCC..."
 	${GCCSRC}/configure -v \
@@ -143,7 +185,7 @@ function final_gcc () {
 	\
 	--with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
 	\
-	${GCCCOMMONCONFIG}
+	${GCCCOMMONCONFIG} \
 	\
 	CC_FOR_BUILD="ccache gcc -pipe" \
 	CXX_FOR_BUILD="ccache g++ -pipe" \
@@ -209,6 +251,7 @@ function send_gcc () {
 }
 
 create_sysroot || exit 1
+prepare_sources || exit 1
 cross_gcc || exit 1
 test_xgcc || exit 1
 final_gcc || exit 1

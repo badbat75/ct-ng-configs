@@ -4,3 +4,4 @@
 build.log
 sysrootutils/packages/*
 sysroots
+tests/helloworld
