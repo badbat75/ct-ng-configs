@@ -6,14 +6,27 @@ cd ${RECIPE_PATH}
 ARCH=arm-linux-gnueabihf
 SOURCES=${HOME}/SOURCES
 BINARIES=${HOME}/BINARIES
+
 BINUTILSVER=2.31.1
 BINUTILSURL="https://mirror2.mirror.garr.it/mirrors/gnuftp/binutils/binutils-${BINUTILSVER}.tar.xz"
 BINUTILSPKG=binutils-${ARCH}-${BINUTILSVER}
 BINUTILSSRC=${SOURCES}/binutils-${BINUTILSVER}
 BINUTILSLOG=${BINARIES}/binutils-${BINUTILSVER}.log
 #BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
+
+ISLVER=0.20
+ISLURL="http://isl.gforge.inria.fr/isl-${ISLVER}.tar.xz"
+ISLPKG=isl-${ISLVER}
+ISLSRC=${SOURCES}/${ISLPKG}
+ISLBIN=${BINARIES}/isl-${ARCH}-${ISLVER}
+ISLLOG=${ISLBIN}.log
+XISLBIN=${BINARIES}/${ISLPKG}
+XISLLOG=${XISLBIN}.log
+#ISLBUILD=${HOME}/BUILD/${ISLSPKG}
+
 GCCVER=8.2.1
 GCCURL="https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-src-snapshot-8.2-2018.08.tar.xz?revision=849f3c32-b965-4205-b5c3-80871b389953&ln=en"
+#GCCPATCHES="https://gcc.gnu.org/viewcvs/gcc/branches/gcc-8-branch/gcc/graphite.h?view=patch&r1=263194&r2=263193&pathrev=263194[-p2]"
 GCCPKG=gcc-${ARCH}-${GCCVER}
 GCCSRC=${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08
 GCCCOMMONCONFIG="--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
@@ -35,30 +48,7 @@ NTHREADS=$(echo $(nproc)/2+1 | bc)
 #SCPPORT=5022
 export PATH="${XGCCBIN}/bin:${PATH}"
 
-function prepare_sources () {
-	test ! -d ${SOURCES} && mkdir -p ${SOURCES}
-	if [ ! -f "${BINUTILSSRC}/configure" ]
-	then
-		echo -n "Downloading BINUTILS..."
-		wget -q -P${SOURCES} --content-disposition "${BINUTILSURL}" || exit 1
-		echo "Done."
-		echo -n "Uncompress BINUTILS..."
-		tar xJf ${SOURCES}/binutils-${BINUTILSVER}.tar.xz -C${SOURCES} || exit 1
-		echo "Done."
-		echo ""
-	fi
-	if [ ! -f "${GCCSRC}/configure" ]
-	then
-		echo -n "Downloading GCC..."
-		wget -q -P${SOURCES} --content-disposition "${GCCURL}" || exit 1
-		echo "Done."
-		echo -n "Uncompress GCC..."
-		tar xJf ${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08.tar.xz -C${SOURCES} || exit 1
-		echo "Done."
-		echo ""
-	fi
-}
-
+# Not used yet
 function program_transform_regex () {
 	### Apply objdump libcc1 configure bug workaround
 	echo "Applying objdump configuration workaround for final GCC..."
@@ -77,6 +67,93 @@ function create_sysroot() {
 	echo ""
 }
 
+function prepare_sources () {
+	test ! -d ${SOURCES} && mkdir -p ${SOURCES}
+	if [ ! -f "${ISLSRC}/configure" ]
+	then
+		echo -n "Downloading ISL..."
+		wget -nc -q -P${SOURCES} --content-disposition "${ISLURL}" || exit 1
+		echo "Done."
+		echo -n "Uncompress ISL..."
+		tar xJf ${ISLSRC}.tar.xz -C${SOURCES} || exit 1
+		echo "Done."
+		echo ""
+	fi
+	if [ ! -f "${BINUTILSSRC}/configure" ]
+	then
+		echo -n "Downloading BINUTILS..."
+		wget -nc -q -P${SOURCES} --content-disposition "${BINUTILSURL}" || exit 1
+		echo "Done."
+		echo -n "Uncompress BINUTILS..."
+		tar xJf ${SOURCES}/binutils-${BINUTILSVER}.tar.xz -C${SOURCES} || exit 1
+		echo "Done."
+		echo ""
+	fi
+	if [ ! -f "${GCCSRC}/configure" ]
+	then
+		echo -n "Downloading GCC..."
+		wget -nc -q -P${SOURCES} --content-disposition "${GCCURL}" || exit 1
+		echo "Done."
+		echo -n "Uncompress GCC..."
+		tar xJf ${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08.tar.xz -C${SOURCES} || exit 1
+		echo "Done."
+		patchnum=0
+		if [ ! "x${GCCPATCHES}" == "x" ]
+		then
+			echo -n "Patching GCC..."
+			for patch in ${GCCPATCHES}
+			do
+				let "patchnum=patchnum+1"
+				patch_url="$(echo $patch | sed -E 's/(.*)\[(.*)\]/\1/g')"
+				patch_name="${GCCSRC}-$(printf "%02d\n" ${patchnum}).patch"
+				patch_param="$(echo $patch | sed -E 's/(.*)\[(.*)\]/\2/g')"
+				echo -n "$patch_name... "
+				wget -nc -q -O${patch_name} "${patch_url}" || exit 1
+				cd ${GCCSRC}
+				patch $patch_param < ${SOURCES}/${patch_name} || exit 1
+				echo "Done."
+				cd -
+			done
+		fi
+		echo ""
+	fi
+}
+
+function cross_isl () {
+	test -d ${XISLBIN} && rm -rf ${XISLBIN}
+	mkdir -p ${XISLBIN}
+	if [ "x${XISLBUILD}" != "x" ]
+	then
+		test -d ${XISLBUILD} && rm -rf ${XISLBUILD}
+		mkdir -p ${XISLBUILD}
+	else
+		XISLBUILD=$(mktemp -d)
+	fi
+	cd ${XISLBUILD}
+	echo -n "Configuring ISL for CrossGCC..."
+	${ISLSRC}/configure -v \
+	--build=x86_64-linux-gnu --host=x86_64-linux-gnu \
+	\
+	--prefix=${XISLBIN} --libdir=${XISLBIN}/lib --libexecdir=${XISLBIN}/lib \
+	\
+	--disable-shared --enable-static --enable-multiarch \
+	CC="ccache gcc" \
+	CXX="ccache g++" \
+	CFLAGS="-pipe -g -O3" \
+	CXXFLAGS="-pipe -g -O3" \
+	> ${XISLLOG} 2>&1 || exit 1
+	echo "Done"
+	echo -n "Compiling ISL for CrossGCC..."
+	make -j${NTHREADS} >> ${XISLLOG} 2>&1 || exit 1
+	echo "Done."
+	echo -n "Installing ISL for CrossGCC..."
+	make install >> ${XISLLOG} 2>&1 || exit 1
+	echo "Done."
+	echo ""
+	cd ..
+	rm -rf ${XISLBUILD}
+}
+
 function binutils () {
 	if [ "x${BINUTILSBUILD}" != "x" ]
 	then
@@ -91,13 +168,11 @@ function binutils () {
 	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
-	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
+	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib --libexecdir=${XGCCBIN}/lib \
 	\
-	--with-sysroot=${SYSROOT} \
+	--enable-libquadmath --enable-libquadmath-support --enable-libssp --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-lto --enable-multiarch \
 	\
-	--enable-libquadmath --enable-libquadmath-support --enable-libssp --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-lto \
-	\
-	--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
+	--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib --with-isl=${XISLBIN} \
 	CC_FOR_BUILD="ccache gcc -pipe" \
 	CXX_FOR_BUILD="ccache g++ -pipe" \
 	CC="ccache gcc" \
@@ -109,11 +184,11 @@ function binutils () {
 	> ${BINUTILSLOG} 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling BINUTILS..."
-	make -j${NTHREADS} > ${BINUTILSLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${BINUTILSLOG} 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing BINUTILS..."
-	make install-strip > ${BINUTILSLOG} 2>&1 || exit 1
-#	objdump_bug_workaround || exit 1
+	make install-strip >> ${BINUTILSLOG} 2>&1 || exit 1
+	# program_transform_regex || exit 1
 	echo "Done."
 	echo ""
 	cd ..
@@ -121,10 +196,11 @@ function binutils () {
 }
 
 function cross_gcc () {
+	cross_isl || exit 1
 	test -d ${XGCCBIN} && rm -rf ${XGCCBIN}
 	mkdir -p ${XGCCBIN}
 	binutils || exit 1
-	if [ "x${XGGBUILD}" != "x" ]
+	if [ "x${XGCCBUILD}" != "x" ]
 	then
 		test -d ${XGCCBUILD} && rm -rf ${XGCCBUILD}
 		mkdir -p ${XGCCBUILD}
@@ -137,9 +213,9 @@ function cross_gcc () {
 	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
-	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib/${ARCH} --libexecdir=${XGCCBIN}/lib \
+	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib --libexecdir=${XGCCBIN}/lib \
 	\
-	--with-sysroot=${SYSROOT} \
+	--with-sysroot=${SYSROOT} --with-isl=${XISLBIN} \
 	\
 	${GCCCOMMONCONFIG} \
 	\
@@ -154,10 +230,10 @@ function cross_gcc () {
 	> ${XGCCLOG} 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling CrossGCC..."
-	make -j${NTHREADS} > ${XGCCLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${XGCCLOG} 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing CrossGCC..."
-	make install-strip > ${XGCCLOG} 2>&1 || exit 1
+	make install-strip >> ${XGCCLOG} 2>&1 || exit 1
 	echo "Done."
 	echo "You can find the final CrossGCC binaries for ${ARCH} here: ${XGCCBIN}"
 	echo ""
@@ -205,10 +281,10 @@ function final_gcc () {
 	> ${GCCLOG} 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling Final GCC..."
-	make -j${NTHREADS} > ${GCCLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${GCCLOG} 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing Final GCC..."
-	make DESTDIR=${GCCBIN} install-strip > ${GCCLOG} 2>&1 || exit 1
+	make DESTDIR=${GCCBIN} install-strip >> ${GCCLOG} 2>&1 || exit 1
 	echo "Done."
 	echo "You can find the final GCC binaries for ${ARCH} here: ${GCCBIN}"
 	echo ""
@@ -260,12 +336,12 @@ function send_gcc () {
 }
 
 test ! -d ${BINARIES} && mkdir -p ${BINARIES}
-create_sysroot || exit 1
+#create_sysroot || exit 1
 prepare_sources || exit 1
 cross_gcc || exit 1
 test_xgcc || exit 1
-final_gcc || exit 1
-zip_gcc || exit 1
-send_gcc
+#final_gcc || exit 1
+#zip_gcc || exit 1
+#send_gcc
 
 cd ${START_PWD}
