@@ -1,7 +1,10 @@
 #!/bin/bash
 START_PWD=${PWD}
 SYSROOTUTILS_PATH=$(dirname $(realpath ${0}))
+PROGRAM_NAME=$(basename $0)
 cd ${SYSROOTUTILS_PATH}
+
+TOOLCHAINS=${HOME}/toolchains
 
 test ! -z "${1:-}" && DISTRO_NAME="${1}"
 test ! -z "${2:-}" && DISTRO_REL="${2}"
@@ -13,26 +16,28 @@ test -z "${DISTRO_ARCH:-}" && echo "No DISTRO_ARCH defined" && exit 1
 
 SRCFILE=${0}.src
 
-function raspbian () {
-    SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
-    PKGPATH=$PWD/packages/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
-    test -d ${SYSROOT} && rm -rf ${SYSROOT}
-    test -d ${PKGPATH} && rm -rf ${PKGPATH}
-    mkdir -p ${SYSROOT}
-    mkdir -p ${PKGPATH}
+test !-z ${SYSROOT} && SYSROOT=${TOOLCHAINS}/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
+PKGPATH=${SYSROOT}/var/cache/packages
+LOGPATH=${SYSROOT}/var/log
 
+test -d ${SYSROOT} && rm -rf ${SYSROOT}
+mkdir -p ${LOGPATH}
+mkdir -p ${PKGPATH}
+
+
+function raspbian () {
     for dl in $(cat ${SRCFILE} | sed -n "/^\[${DISTRO_NAME}\/${DISTRO_REL}\/${DISTRO_ARCH}\]/,/\[.*\]*/p" | grep "http")
     do
         echo ${dl}
         wget -q -P${PKGPATH} --content-disposition "$dl"
     done
     ./pkgextract -s ${SYSROOT} ${PKGPATH}/*
-    rm -rf ${PKGPATH}
+#    rm -rf ${PKGPATH}
 }
 
 case ${DISTRO_NAME} in
     raspbian)
-                raspbian;
+                raspbian > ${LOGPATH}/${PROGRAM_NAME}.log 2>&1
                 ;;
 esac
 cd ${START_PWD}

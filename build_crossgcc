@@ -1,52 +1,15 @@
 #!/bin/bash
 START_PWD=${PWD}
-RECIPE_PATH=$(dirname $(realpath ${0}))
-cd ${RECIPE_PATH}
+PROGRAM_PATH=$(dirname $(realpath ${0}))
+PROGRAM_NAME=$(basename ${0})
 
-ARCH=arm-linux-gnueabihf
-SOURCES=${HOME}/SOURCES
-BINARIES=${HOME}/BINARIES
+TOOLCHAINS=${HOME}/toolchains
+SOURCES=${TOOLCHAINS}/sources
+NATIVES=${TOOLCHAINS}/natives
+LIBRARIES=${TOOLCHAINS}/libraries
+XCOMPILERS=${TOOLCHAINS}/xcompilers
 
-BINUTILSVER=2.31.1
-BINUTILSURL="https://mirror2.mirror.garr.it/mirrors/gnuftp/binutils/binutils-${BINUTILSVER}.tar.xz"
-BINUTILSPKG=binutils-${ARCH}-${BINUTILSVER}
-BINUTILSSRC=${SOURCES}/binutils-${BINUTILSVER}
-BINUTILSLOG=${BINARIES}/binutils-${BINUTILSVER}.log
-#BINUTILSBUILD=${HOME}/BUILD/${BINUTILSPKG}
-
-ISLVER=0.20
-ISLURL="http://isl.gforge.inria.fr/isl-${ISLVER}.tar.xz"
-ISLPKG=isl-${ISLVER}
-ISLSRC=${SOURCES}/${ISLPKG}
-ISLBIN=${BINARIES}/isl-${ARCH}-${ISLVER}
-ISLLOG=${ISLBIN}.log
-XISLBIN=${BINARIES}/${ISLPKG}
-XISLLOG=${XISLBIN}.log
-#ISLBUILD=${HOME}/BUILD/${ISLSPKG}
-
-GCCVER=8.2.1
-GCCURL="https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-src-snapshot-8.2-2018.08.tar.xz?revision=849f3c32-b965-4205-b5c3-80871b389953&ln=en"
-#GCCPATCHES="https://gcc.gnu.org/viewcvs/gcc/branches/gcc-8-branch/gcc/graphite.h?view=patch&r1=263194&r2=263193&pathrev=263194[-p2]"
-GCCPKG=gcc-${ARCH}-${GCCVER}
-GCCSRC=${SOURCES}/gcc-arm-src-snapshot-8.2-2018.08
-GCCCOMMONCONFIG="--enable-languages=c,c++  --enable-shared --enable-linker-build-id --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-gnu-unique-object --enable-plugin --enable-checking=release --enable-__cxa_atexit --enable-libmudflap --enable-libgomp --enable-libssp --enable-libquadmath --enable-libquadmath-support --enable-lto --enable-threads=posix --enable-initfini-array --enable-gnu-indirect-function --enable-multiarch \
---with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib \
---disable-option-checking --disable-libitm --disable-libmpx \
---without-included-gettext"
-#GCCBUILD=${HOME}/BUILD/${GCCPKG}
-GCCBIN=${BINARIES}/${GCCPKG}
-GCCLOG=${GCCBIN}.log
-GCCTAR=${BINARIES}/${GCCPKG}.tar.xz
-XGCCBIN=${BINARIES}/x${GCCPKG}
-XGCCLOG=${XGCCBIN}.log
-DISTRO_NAME=raspbian
-DISTRO_REL=stretch
-DISTRO_ARCH=${ARCH}
-SYSROOT=$(cd ..; pwd)/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
-NTHREADS=$(echo $(nproc)/2+1 | bc)
-#SCPDEST="pi@127.0.0.1:"
-#SCPPORT=5022
-export PATH="${XGCCBIN}/bin:${PATH}"
+HOSTARCH=$(cc -dumpmachine)
 
 # Not used yet
 function program_transform_regex () {
@@ -61,8 +24,8 @@ function program_transform_regex () {
 }
 
 function create_sysroot() {
-	echo "Creating SYSROOT environment..."
-	../sysrootutils/create_sysroot ${DISTRO_NAME} ${DISTRO_REL} ${DISTRO_ARCH} || exit 1
+	echo -n "Creating SYSROOT environment..."
+	${PROGRAM_PATH}/sysrootutils/create_sysroot ${DISTRO_NAME} ${DISTRO_REL} ${DISTRO_ARCH} || exit 1
 	echo "Done"
 	echo ""
 }
@@ -132,22 +95,22 @@ function cross_isl () {
 	cd ${XISLBUILD}
 	echo -n "Configuring ISL for CrossGCC..."
 	${ISLSRC}/configure -v \
-	--build=x86_64-linux-gnu --host=x86_64-linux-gnu \
+	--build=${HOSTARCH} --host=${HOSTARCH} \
 	\
 	--prefix=${XISLBIN} --libdir=${XISLBIN}/lib --libexecdir=${XISLBIN}/lib \
 	\
 	--disable-shared --enable-static --enable-multiarch \
-	CC="ccache gcc" \
-	CXX="ccache g++" \
+	CC="ccache ${HOSTARCH}-gcc" \
+	CXX="ccache ${HOSTARCH}-g++" \
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
-	> ${XISLLOG} 2>&1 || exit 1
+	>> ${XISLBIN}/build.log 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling ISL for CrossGCC..."
-	make -j${NTHREADS} >> ${XISLLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${XISLBIN}/build.log 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing ISL for CrossGCC..."
-	make install >> ${XISLLOG} 2>&1 || exit 1
+	make install >> ${XISLBIN}/build.log 2>&1 || exit 1
 	echo "Done."
 	echo ""
 	cd ..
@@ -165,29 +128,29 @@ function binutils () {
 	cd ${BINUTILSBUILD}
 	echo -n "Configuring BINUTILS..."
 	${BINUTILSSRC}/configure -v \
-	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
+	--build=${HOSTARCH} --host=${HOSTARCH} --target=${TARGETARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
-	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib --libexecdir=${XGCCBIN}/lib \
+	--prefix=${BINUTILSBIN} --libdir=${BINUTILSBIN}/lib --libexecdir=${XGCCBIN}/lib \
 	\
 	--enable-libquadmath --enable-libquadmath-support --enable-libssp --enable-libstdcxx-debug --enable-libstdcxx-time=yes --enable-lto --enable-multiarch \
 	\
 	--with-default-libstdcxx-abi=new --with-system-zlib --with-target-system-zlib --with-isl=${XISLBIN} \
-	CC_FOR_BUILD="ccache gcc -pipe" \
-	CXX_FOR_BUILD="ccache g++ -pipe" \
-	CC="ccache gcc" \
-	CXX="ccache g++" \
+	CC_FOR_BUILD="ccache ${HOSTARCH}-gcc -pipe" \
+	CXX_FOR_BUILD="ccache ${HOSTARCH}-g++ -pipe" \
+	CC="ccache ${HOSTARCH}-gcc" \
+	CXX="ccache ${HOSTARCH}-g++" \
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
 	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-	> ${BINUTILSLOG} 2>&1 || exit 1
+	>> ${BINUTILSBIN}/build.log 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling BINUTILS..."
-	make -j${NTHREADS} >> ${BINUTILSLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${BINUTILSBIN}/build.log 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing BINUTILS..."
-	make install-strip >> ${BINUTILSLOG} 2>&1 || exit 1
+	make install-strip >> ${BINUTILSBIN}/build.log 2>&1 || exit 1
 	# program_transform_regex || exit 1
 	echo "Done."
 	echo ""
@@ -210,7 +173,7 @@ function cross_gcc () {
 	cd ${XGCCBUILD}
 	echo -n "Configuring CrossGCC..."
 	${GCCSRC}/configure -v \
-	--build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=${ARCH} \
+	--build=${HOSTARCH} --host=${HOSTARCH} --target=${TARGETARCH} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
 	--prefix=${XGCCBIN} --libdir=${XGCCBIN}/lib --libexecdir=${XGCCBIN}/lib \
@@ -219,29 +182,63 @@ function cross_gcc () {
 	\
 	${GCCCOMMONCONFIG} \
 	\
-	CC_FOR_BUILD="ccache gcc -pipe" \
-	CXX_FOR_BUILD="ccache g++ -pipe" \
-	CC="ccache gcc" \
-	CXX="ccache g++" \
+	CC_FOR_BUILD="ccache ${HOSTARCH}-gcc -pipe" \
+	CXX_FOR_BUILD="ccache ${HOSTARCH}-g++ -pipe" \
+	CC="ccache ${HOSTARCH}-gcc" \
+	CXX="ccache ${HOSTARCH}-g++" \
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
 	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-	> ${XGCCLOG} 2>&1 || exit 1
+	>> ${XGCCBIN}/build.log 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling CrossGCC..."
-	make -j${NTHREADS} >> ${XGCCLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${XGCCBIN}/build.log 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing CrossGCC..."
-	make install-strip >> ${XGCCLOG} 2>&1 || exit 1
+	make install-strip >> ${XGCCBIN}/build.log 2>&1 || exit 1
 	echo "Done."
-	echo "You can find the final CrossGCC binaries for ${ARCH} here: ${XGCCBIN}"
+	echo "You can find the final CrossGCC binaries for ${TARGETARCH} here: ${XGCCBIN}"
 	echo ""
 	cd ..
 	rm -rf ${XGCCBUILD}
 }
 
+function isl () {
+	test -d ${ISLBIN} && rm -rf ${ISLBIN}
+	mkdir -p ${ISLBIN}
+	if [ "x${ISLBUILD}" != "x" ]
+	then
+		test -d ${ISLBUILD} && rm -rf ${ISLBUILD}
+		mkdir -p ${ISLBUILD}
+	else
+		ISLBUILD=$(mktemp -d)
+	fi
+	cd ${ISLBUILD}
+	echo -n "Configuring ISL Final GCC..."
+	${ISLSRC}/configure -v \
+	--build=${HOSTARCH} --host=${TARGETARCH} \
+	\
+	--prefix=${ISLBIN} --libdir=${ISLBIN}/lib/${TARGETARCH} --libexecdir=${ISLBIN}/lib \
+	\
+	--disable-shared --enable-static --enable-multiarch \
+	CC="ccache ${TARGETARCH}-gcc" \
+	CFLAGS="-pipe -g -O3 --sysroot=${SYSROOT}" \
+	>> ${ISLBIN}/build.log 2>&1 || exit 1
+	echo "Done"
+	echo -n "Compiling ISL for Final GCC..."
+	make -j${NTHREADS} V=1 >> ${ISLBIN}/build.log 2>&1 || exit 1
+	echo "Done."
+	echo -n "Installing ISL for Final GCC..."
+	make install >> ${ISLBIN}/build.log 2>&1 || exit 1
+	echo "Done."
+	echo ""
+	cd ..
+	rm -rf ${ISLBUILD}
+}
+
 function final_gcc () {
+	isl || exit 1
 	test -d ${GCCBIN} && rm -rf ${GCCBIN}
 	mkdir -p ${GCCBIN}
 	if [ "x${GCCBUILD}" != "x" ]
@@ -254,39 +251,39 @@ function final_gcc () {
 	cd ${GCCBUILD}
 	echo -n "Configuring Final GCC..."
 	${GCCSRC}/configure -v \
-	--build=x86_64-linux-gnu --host=${ARCH} --target=${ARCH} \
+	--build=${HOSTARCH} --host=${TARGETARCH} --target=${TARGETARCH} \
 	--program-suffix=-${GCCVER} \
 	--with-arch-directory=arm --with-arch=armv6 --with-fpu=vfp --with-float=hard \
 	\
-	--prefix=/usr --libdir=/usr/lib/${ARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${ARCH}/${GCCVER} \
+	--prefix=/usr --libdir=/usr/lib/${TARGETARCH}/${GCCVER} --libexecdir=/usr/lib --with-slibdir=/lib/${TARGETARCH}/${GCCVER} \
 	\
-	--with-sysroot=/ \
+	--with-sysroot=/ --with-isl=${ISLBIN} \
 	\
-	--with-gmp-include=${SYSROOT}/usr/include/${ARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${ARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
+	--with-gmp-include=${SYSROOT}/usr/include/${TARGETARCH} --with-gmp-lib=${SYSROOT}/usr/lib/${TARGETARCH} --with-mpc=${SYSROOT}/usr --with-mpfr=${SYSROOT}/usr --with-isl=${SYSROOT}/usr \
 	\
 	${GCCCOMMONCONFIG} \
 	\
-	CC_FOR_BUILD="ccache gcc -pipe" \
-	CXX_FOR_BUILD="ccache g++ -pipe" \
-	CC="ccache ${ARCH}-gcc --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
-	CXX="ccache ${ARCH}-g++ --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${ARCH} -B${SYSROOT}/usr/lib/${ARCH}" \
+	CC_FOR_BUILD="ccache ${HOSTARCH}-gcc -pipe" \
+	CXX_FOR_BUILD="ccache ${HOSTARCH}-g++ -pipe" \
+	CC="ccache ${TARGETARCH}-gcc --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${TARGETARCH} -B${SYSROOT}/usr/lib/${TARGETARCH}" \
+	CXX="ccache ${TARGETARCH}-g++ --sysroot=${SYSROOT} -I${SYSROOT}/usr/include/${TARGETARCH} -B${SYSROOT}/usr/lib/${TARGETARCH}" \
 	CFLAGS="-pipe -g -O3" \
 	CXXFLAGS="-pipe -g -O3" \
-	LDFLAGS="-L${SYSROOT}/lib/${ARCH}" \
-	CC_FOR_TARGET="ccache ${ARCH}-gcc" \
-	CXX_FOR_TARGET="ccache ${ARCH}-g++" \
+	LDFLAGS="-L${SYSROOT}/lib/${TARGETARCH}" \
+	CC_FOR_TARGET="ccache ${TARGETARCH}-gcc" \
+	CXX_FOR_TARGET="ccache ${TARGETARCH}-g++" \
 	CFLAGS_FOR_TARGET="-pipe -g -O3" \
 	CXXFLAGS_FOR_TARGET="-pipe -g -O3" \
-	host_configargs="gcc_cv_objdump=${ARCH}-objdump" \
-	> ${GCCLOG} 2>&1 || exit 1
+	host_configargs="gcc_cv_objdump=${TARGETARCH}-objdump" \
+	>> ${GCCBIN}/build.log 2>&1 || exit 1
 	echo "Done"
 	echo -n "Compiling Final GCC..."
-	make -j${NTHREADS} >> ${GCCLOG} 2>&1 || exit 1
+	make -j${NTHREADS} >> ${GCCBIN}/build.log 2>&1 || exit 1
 	echo "Done."
 	echo -n "Installing Final GCC..."
-	make DESTDIR=${GCCBIN} install-strip >> ${GCCLOG} 2>&1 || exit 1
+	make DESTDIR=${GCCBIN} install-strip >> ${GCCBIN}/build.log 2>&1 || exit 1
 	echo "Done."
-	echo "You can find the final GCC binaries for ${ARCH} here: ${GCCBIN}"
+	echo "You can find the final GCC binaries for ${TARGETARCH} here: ${GCCBIN}"
 	echo ""
 	cd ..
 	rm -rf ${GCCBUILD}
@@ -294,7 +291,7 @@ function final_gcc () {
 
 function test_xgcc () {
 	echo -n "Testing XGCC..."
-	CPUARCH=$(echo ${ARCH} | sed 's/\(+*\)-.*/\1/g')
+	CPUARCH=$(echo ${TARGETARCH} | sed 's/\(+*\)-.*/\1/g')
 	QEMU=0
 	test -f "$(which qemu-${CPUARCH} 2>/dev/null)" && QEMU=1
 	TESTSTRING="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
@@ -309,7 +306,7 @@ function test_xgcc () {
 		}
 	EOF
 	echo -n "Compile test..."
-	${ARCH}-gcc /tmp/${TESTSTRING}.c -o /tmp/${TESTSTRING} || exit 1
+	${TARGETARCH}-gcc /tmp/${TESTSTRING}.c -o /tmp/${TESTSTRING} || exit 1
 	if [ "${QEMU}" -eq "1" ]
 	then
 		echo -n "Test executable with qemu-${CPUARCH}..."
@@ -325,7 +322,7 @@ function zip_gcc () {
 	echo -n "Zipping final GCC..."
 	test -f ${GCCTAR} && rm -f ${GCCTAR}
 	cd ${GCCBIN} && \
-	tar cf - . | xz -z -T0 - > ${GCCTAR}
+	tar cf - . | xz -z -T0 - >> ${GCCTAR}
 	echo "Done."
 	echo "You can find the final GCC package here: ${GCCTAR}"
 	echo ""
@@ -335,13 +332,89 @@ function send_gcc () {
 	test ! -z "${SCPDEST:-}" && test -f ${GCCTAR} && scp ${SCPPORT:+-P${SCPPORT}} ${GCCTAR} ${SCPDEST}
 }
 
-test ! -d ${BINARIES} && mkdir -p ${BINARIES}
-#create_sysroot || exit 1
-prepare_sources || exit 1
-cross_gcc || exit 1
-test_xgcc || exit 1
-#final_gcc || exit 1
-#zip_gcc || exit 1
-#send_gcc
+function finalize () {
+	cd ${START_PWD}
+}
 
-cd ${START_PWD}
+function all_steps () {
+	create_sysroot || exit 1
+	prepare_sources || exit 1
+	cross_gcc || exit 1
+	test_xgcc || exit 1
+	final_gcc || exit 1
+	zip_gcc || exit 1
+	send_gcc
+	finalize
+	exit 0
+}
+
+test ! -d ${TOOLCHAINS} && mkdir -p ${TOOLCHAINS}
+
+case "${1}" in
+	-h|--help)
+		cat <<-EOF
+			Help:
+
+			${PROGRAM_NAME} [parameters] <recipe_file>
+
+			-a --all
+			-s --create-sysroot:
+			-p --prepare-source
+			-x --cross-gcc
+			-f --final-gcc
+			-z --zip-gcc
+			-S --send-gcc
+			-h --help
+		EOF
+		finalize
+		exit 0
+	;;
+	*)
+		RECIPEFILE=${@:$#}
+		echo "Recipe name: ${RECIPEFILE}"
+		test ! -f "${RECIPEFILE}" && echo "${RECIPEFILE} doesn't exist" && exit 1
+		. $(realpath ${RECIPEFILE})
+		SYSROOT=${TOOLCHAINS}/sysroots/${DISTRO_NAME}/${DISTRO_REL}/${DISTRO_ARCH}
+		NTHREADS=$(echo $(nproc)/2+1 | bc)
+		#SCPDEST="pi@127.0.0.1:"
+		#SCPPORT=5022
+		export PATH="${XGCCBIN}/bin:${PATH}"
+#		cd ${PROGRAM_PATH}
+		[ "$1" == "${RECIPEFILE}" ] && all_steps
+esac
+
+while (( "${#} - 1" )); do
+	echo "Evaluate ${1}"
+	case ${1} in
+		-s|--create-sysroot)
+			create_sysroot || exit 1
+		;;
+		-p|--prepare-source)
+			prepare_sources || exit 1
+		;;
+		-x|--cross-gcc)
+			cross_gcc || exit 1
+			test_xgcc || exit 1
+		;;
+		-f|--final-gcc)
+			final_gcc || exit 1
+		;;
+		-z|--zip-gcc)
+			zip_gcc || exit 1
+		;;
+		-S|--send-gcc)
+			send_gcc
+		;;
+		-a|--all)
+			all_steps
+		;;
+		*)
+			echo "Unrecognized parameter $1"
+			exit 1
+		;;
+	esac
+	shift
+
+done
+
+finalize
